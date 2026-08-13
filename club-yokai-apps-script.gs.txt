@@ -1,0 +1,109 @@
+/* ============================================================
+   CLUB YOKAI — Registro de pedidos y fidelidad por teléfono
+   ------------------------------------------------------------
+   QUÉ HACE:
+   Cada vez que alguien envía un pedido desde la web, este script
+   apunta una fila en la pestaña "Fidelidad" de tu Google Sheet
+   (fecha, teléfono, total, resumen del pedido). Si el cliente dio
+   su teléfono, además le dice a la web cuántos pedidos CONFIRMADOS
+   lleva ya, para avisarle cuando le toca premio.
+
+   Los pedidos SIN teléfono también se guardan (para que puedas ver
+   qué se vende más, ticket medio, etc.) pero no cuentan para nadie
+   en concreto, ya que no hay forma de identificar al cliente.
+
+   IMPORTANTE — LA COLUMNA "Confirmado":
+   Un pedido enviado por WhatsApp no es todavía un pedido real:
+   puede cancelarse, ser un error, no completarse... Por eso cada
+   fila nueva se guarda con la columna "Confirmado" vacía, y NO
+   cuenta para la recompensa hasta que tú la marques.
+
+   Cuando prepares/completes un pedido, simplemente escribe SI
+   en la columna E de esa fila (o activa la casilla si conviertes
+   la columna en casillas de verificación, ver paso 8 más abajo).
+   Solo esas filas confirmadas cuentan para el nº de pedido de
+   cada cliente.
+
+   CÓMO INSTALARLO (una sola vez, 5-10 minutos):
+
+   1. Abre tu Google Sheet de la carta (o crea uno nuevo solo para
+      esto, cualquiera de los dos vale).
+   2. Menú Extensiones → Apps Script.
+   3. Borra el contenido de ejemplo que aparece y pega TODO este
+      archivo.
+   4. Arriba a la derecha, pulsa "Implementar" → "Nueva implementación".
+   5. En "Tipo", elige "Aplicación web".
+   6. En "Ejecutar como", deja "Yo (tu correo)".
+   7. En "Quién tiene acceso", elige "Cualquier usuario".
+   8. Pulsa "Implementar". Google te pedirá autorizar permisos:
+      acepta (es tu propio script, sobre tu propia hoja).
+   9. Copia la URL que te da (termina en /exec).
+   10. Pégala en el archivo de la web, en la línea:
+       const LOYALTY_URL = "";
+       así: const LOYALTY_URL = "TU_URL_AQUI";
+
+   La pestaña "Fidelidad" se crea sola la primera vez que alguien
+   envíe un pedido, con estas columnas:
+       Fecha | Teléfono | Total (€) | Resumen del pedido | Confirmado
+
+   OPCIONAL pero recomendado — casillas de verificación:
+   Cuando ya tengas alguna fila, selecciona toda la columna E
+   (Confirmado) → menú Insertar → Casilla de verificación.
+   Así, en vez de escribir SI a mano, simplemente tocas para
+   marcar cada pedido como confirmado desde el móvil.
+
+   ------------------------------------------------------------
+   VER QUÉ SE VENDE MÁS (analítica sencilla, sin nada que instalar):
+   En una celda vacía de tu hoja, pega esta fórmula para contar
+   cuántas veces aparece un plato en la columna "Resumen del pedido"
+   (cambia "Edamame" por el plato que quieras consultar):
+
+     =SUMPRODUCT(ISNUMBER(SEARCH("Edamame"; D2:D1000)))
+
+   Para el ticket medio de todos los pedidos confirmados:
+
+     =PROMEDIO(FILTER(C2:C1000; E2:E1000<>""))
+   ============================================================ */
+
+function doPost(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Fidelidad");
+  if (!sheet) {
+    sheet = ss.insertSheet("Fidelidad");
+    sheet.appendRow(["Fecha", "Teléfono", "Total (€)", "Resumen del pedido", "Confirmado"]);
+    sheet.setFrozenRows(1);
+  }
+
+  var data = JSON.parse(e.postData.contents);
+  var phone = String(data.phone || "").replace(/\D/g, ""); // solo dígitos
+  var total = data.total || "";
+  var summary = data.summary || "";
+
+  // Si hay teléfono, contamos los pedidos CONFIRMADOS que tenía ANTES de este envío
+  var count = 0;
+  if (phone) {
+    var values = sheet.getDataRange().getValues();
+    for (var i = 1; i < values.length; i++) {
+      var rowPhone = String(values[i][1]).replace(/\D/g, "");
+      if (rowPhone === phone && isConfirmed(values[i][4])) count++;
+    }
+  }
+
+  // Guardamos el pedido siempre (con o sin teléfono), pendiente de confirmar
+  sheet.appendRow([new Date(), phone, total, summary, ""]);
+
+  return ContentService.createTextOutput(JSON.stringify({ count: count }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function isConfirmed(val) {
+  if (val === true) return true;
+  var s = String(val).trim().toUpperCase();
+  return s === "SI" || s === "SÍ" || s === "OK" || s === "X" || s === "TRUE";
+}
+
+// Solo para poder comprobar que la implementación funciona abriendo la URL en el navegador
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({ status: "Club YOKAI activo ✓" }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
