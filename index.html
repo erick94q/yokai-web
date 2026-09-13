@@ -122,6 +122,11 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
   font-size:13px;font-weight:800;letter-spacing:.5em;text-transform:uppercase;
   margin-bottom:20px;
 }
+.soon-badge{
+  display:inline-block;margin:18px auto 0;background:var(--blue);color:#fff;
+  font-weight:800;font-size:13px;border-radius:999px;padding:9px 18px;
+  box-shadow:0 6px 16px rgba(41,50,217,.3);
+}
 .hero h1{
   font-size:clamp(64px,15vw,150px);line-height:.95;
 }
@@ -383,7 +388,8 @@ section,main,.section-head{position:relative;z-index:2}
 .brand{margin:110px 0 0;position:relative;z-index:2}
 .brand-band{
   background:linear-gradient(rgba(41,50,217,.6),rgba(41,50,217,.6)), url('img/textura-azul.jpg');
-  background-size:560px;color:#fff;padding:80px 24px;position:relative;overflow:hidden;
+  background-size:cover;background-position:center;background-repeat:no-repeat;
+  color:#fff;padding:80px 24px;position:relative;overflow:hidden;
 }
 .brand-band .k{position:absolute;right:-24px;bottom:-70px;font-size:clamp(180px,28vw,340px);color:rgba(255,255,255,.07);line-height:1;pointer-events:none}
 .brand-inner{max-width:760px;margin:0 auto;text-align:center;position:relative}
@@ -431,7 +437,8 @@ section,main,.section-head{position:relative;z-index:2}
 .order{margin:110px 0 0;padding:0;position:relative;z-index:2}
 .order-band{
   background:linear-gradient(rgba(41,50,217,.6),rgba(41,50,217,.6)), url('img/textura-azul.jpg');
-  background-size:560px;color:#fff;padding:70px 24px;overflow:hidden;position:relative;
+  background-size:cover;background-position:center;background-repeat:no-repeat;
+  color:#fff;padding:70px 24px;overflow:hidden;position:relative;
 }
 .order-band .k{position:absolute;left:-14px;top:-46px;font-size:210px;color:rgba(255,255,255,.07);line-height:1;pointer-events:none}
 .order-inner{
@@ -464,8 +471,8 @@ section,main,.section-head{position:relative;z-index:2}
   background:#fff;border-radius:50%;padding:10px;
   box-shadow:0 8px 20px rgba(0,0,0,.2);
 }
-.order-icon.icon-a{top:-6%;right:6%;transform:rotate(-8deg);animation:iconFloat 4.2s ease-in-out infinite}
-.order-icon.icon-b{bottom:-4%;left:2%;transform:rotate(10deg);animation:iconFloat 5s ease-in-out infinite reverse}
+.order-icon.icon-a{top:2%;right:2%;transform:rotate(-8deg);animation:iconFloat 4.2s ease-in-out infinite}
+.order-icon.icon-b{bottom:6%;left:10%;transform:rotate(10deg);animation:iconFloat 5s ease-in-out infinite reverse}
 @keyframes iconFloat{50%{transform:translateY(-8px) rotate(var(--r,0deg))}}
 @media(max-width:820px){.order-icon{display:none}}
 @media(max-width:820px){
@@ -695,6 +702,7 @@ footer{
   <div class="hero-inner">
     <div class="hero-eyebrow">Cocina japonesa · Onda</div>
     <img class="wordmark-img" src="img/logo-largo-azul.png" alt="YOKAI">
+    <div class="soon-badge">🎁 Club YOKAI — muy pronto: pide, acumula, gana</div>
     <p class="sub">El Japón más urbano y auténtico, en Onda. Comida japonesa fresca, hecha al momento y pensada para tu día a día.</p>
     <div class="hero-ctas">
       <a class="btn primary" href="#carta">Ver la carta</a>
@@ -729,6 +737,32 @@ footer{
   <div class="status-pill" id="statusPill" aria-live="polite"><span class="dot"></span><span class="txt">…</span></div>
   <nav class="catnav" id="catNav" aria-label="Categorías de la carta"></nav>
 </div>
+
+<section class="order reveal" id="pedir">
+  <div class="order-band">
+    <div class="k jp" aria-hidden="true">注文</div>
+    <div class="order-inner">
+      <div>
+        <h2>¿PEDIMOS?</h2>
+        <p>Monta tu pedido aquí mismo y envíanoslo por WhatsApp. Recogida en el local o entrega a domicilio en Onda.</p>
+        <div class="order-info-row" id="orderInfoRow"></div>
+        <p class="order-note">🍣 Nuestro sushi se prepara al momento, no antes — en días de mucha demanda, el tiempo total puede alargarse un poco, ya que se suma la preparación y el reparto. ¡Gracias por la paciencia!</p>
+      </div>
+      <div class="order-char-badge">
+        <img class="order-char" src="img/char-nigiri.png" alt="Personaje YOKAI celebrando con palillos">
+      </div>
+      <img class="order-icon icon-a" src="img/icon-gyoza-order.png" alt="">
+      <img class="order-icon icon-b" src="img/icon-maki-order.png" alt="">
+    </div>
+  </div>
+</section>
+
+<section id="favoritos" hidden>
+  <div class="section-head reveal" id="favoritos-head">
+    <h2>NUESTROS FAVORITOS</h2><span class="jp">おすすめ</span><span class="rule"></span>
+  </div>
+  <div class="dishes" id="favoritosGrid"></div>
+</section>
 
 <main id="carta"></main>
 
@@ -801,24 +835,6 @@ footer{
 </section>
 
 <!-- ============ PEDIR ============ -->
-<section class="order reveal" id="pedir">
-  <div class="order-band">
-    <div class="k jp" aria-hidden="true">注文</div>
-    <div class="order-inner">
-      <div>
-        <h2>¿PEDIMOS?</h2>
-        <p>Monta tu pedido aquí mismo y envíanoslo por WhatsApp. Recogida en el local o entrega a domicilio en Onda.</p>
-        <div class="order-info-row" id="orderInfoRow"></div>
-        <p class="order-note">🍣 Nuestro sushi se prepara al momento, no antes — en días de mucha demanda, el tiempo total puede alargarse un poco, ya que se suma la preparación y el reparto. ¡Gracias por la paciencia!</p>
-      </div>
-      <div class="order-char-badge">
-        <img class="order-char" src="img/char-nigiri.png" alt="Personaje YOKAI celebrando con palillos">
-      </div>
-      <img class="order-icon icon-a" src="img/icon-gyoza-order.png" alt="">
-      <img class="order-icon icon-b" src="img/icon-maki-order.png" alt="">
-    </div>
-  </div>
-</section>
 
 <footer>
   <img class="logo-box-img" src="img/logo-cuadrado-azul.png" alt="YOKAI"><br>
@@ -1192,7 +1208,7 @@ function buildFromSheet(rows){
   const idx = name => head.indexOf(name);
   const col = (r, name) => { const i = idx(name); return i >= 0 ? (r[i] || "").trim() : ""; };
 
-  const sections = [], sauces = [], drinks = [];
+  const sections = [], sauces = [], drinks = [], favorites = [];
   const secMap = {};
 
   for(const r of rows.slice(1)){
@@ -1212,16 +1228,18 @@ function buildFromSheet(rows){
         sections.push(secMap[secName]);
       }
       if(col(r,"seccion-jp") && !secMap[secName].jp) secMap[secName].jp = col(r,"seccion-jp");
-      secMap[secName].dishes.push({
+      const dish = {
         name: col(r,"nombre"), jp: col(r,"nombre-jp"), emoji: col(r,"emoji") || "🍱",
         media: col(r,"media"), badge: col(r,"badge"),
         desc: col(r,"descripcion"), origin: col(r,"origen"),
         prices: parsePrices(col(r,"precios")),
         allergens: col(r,"alergenos").toLowerCase().split(/[,;]/).map(a => slug(a.trim()).replace(/-/g,"_")).filter(Boolean)
-      });
+      };
+      secMap[secName].dishes.push(dish);
+      if(col(r,"destacado").toLowerCase() === "si") favorites.push(dish);
     }
   }
-  return { sections, sauces, drinks };
+  return { sections, sauces, drinks, favorites };
 }
 
 /* ---- Render ---- */
@@ -1234,8 +1252,37 @@ function allergensHTML(list){
 
 let ALL_DRINKS = [];
 
-function renderAll(SECTIONS, SAUCES, DRINKS){
+function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES){
   ALL_DRINKS = DRINKS || [];
+
+  const favBox = document.getElementById("favoritos");
+  const favGrid = document.getElementById("favoritosGrid");
+  if(FAVORITES && FAVORITES.length){
+    favBox.hidden = false;
+    favGrid.innerHTML = FAVORITES.map(d => `
+      <article class="dish reveal">
+        <div class="media" data-media="${d.media}" data-name="${d.name}">
+          <div class="badge">⭐ Favorito</div>
+          ${d.media ? mediaTag(d.media, true, d.name + " — YOKAI Onda") : `<div class="emoji">${d.emoji}</div><div class="ph">Foto en camino</div>`}
+        </div>
+        <div class="info">
+          <h3>${d.name}</h3>
+          <p class="desc">${d.desc || ""}</p>
+          <div class="origin">${d.origin || ""}</div>
+          <div class="prices">${d.prices.map(p => `
+            <div class="price"><div class="lbl">${p.label}</div><div class="val">${p.value}</div>
+              <button class="add-btn" data-name="${d.name}" data-label="${p.label}" data-price="${p.value}"><span class="plus">+</span><span class="txt">Añadir</span></button>
+            </div>`).join("")}
+          </div>
+          <div class="allergens">
+            <div class="lbl">Alérgenos</div>
+            <div class="allergen-row">${allergensHTML(d.allergens)}</div>
+          </div>
+        </div>
+      </article>`).join("");
+  } else {
+    favBox.hidden = true;
+  }
 
   const main = document.getElementById("carta");
   main.innerHTML = "";
@@ -1344,12 +1391,12 @@ function renderAll(SECTIONS, SAUCES, DRINKS){
       const data = buildFromSheet(parseCSV(await res.text()));
       if(data.sections.length || data.sauces.length || data.drinks.length){
         renderAll(data.sections, data.sauces.length ? data.sauces : DEFAULT_SAUCES,
-                  data.drinks.length ? data.drinks : DEFAULT_DRINKS);
+                  data.drinks.length ? data.drinks : DEFAULT_DRINKS, data.favorites);
         return;
       }
     }catch(err){ console.warn("No se pudo leer la hoja, usando carta local:", err); }
   }
-  renderAll(DEFAULT_SECTIONS, DEFAULT_SAUCES, DEFAULT_DRINKS);
+  renderAll(DEFAULT_SECTIONS, DEFAULT_SAUCES, DEFAULT_DRINKS, []);
 })();
 
 
