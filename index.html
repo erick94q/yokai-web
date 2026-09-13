@@ -594,27 +594,31 @@ footer{
 #gyozaModalOverlay[hidden]{display:none}
 #gyozaModalOverlay.show{opacity:1;pointer-events:auto}
 #gyozaModalCard{
-  background:#fff;border:3px solid var(--blue);border-radius:26px;
-  max-width:380px;width:100%;padding:30px 26px 26px;text-align:center;position:relative;
+  background:#fff;border:3px solid var(--blue);border-radius:22px;
+  max-width:352px;width:100%;padding:18px 20px 16px;text-align:center;position:relative;
   box-shadow:10px 12px 0 rgba(41,50,217,.25);
   transform:scale(.85) rotate(-1deg);opacity:0;transition:transform .28s cubic-bezier(.34,1.56,.64,1),opacity .2s;
-  max-height:88vh;overflow-y:auto;
+  max-height:94vh;overflow-y:auto;
 }
 #gyozaModalOverlay.show #gyozaModalCard{transform:scale(1) rotate(0deg);opacity:1}
-#gyozaModalCard h3{font-size:19px;font-weight:800;color:var(--blue);margin-bottom:6px}
+#gyozaModalCard h3{font-size:16px;font-weight:800;color:var(--blue);margin-bottom:2px}
+#gyozaModalCard .mochi-sub{font-size:11.5px;line-height:1.3;margin-bottom:9px}
 .gyoza-photo{
-  width:100%;aspect-ratio:16/10;border-radius:16px;overflow:hidden;
-  margin-bottom:16px;background:var(--blue-soft);
+  width:100%;height:78px;border-radius:12px;overflow:hidden;
+  margin-bottom:9px;background:var(--blue-soft);
 }
 .gyoza-photo img,.gyoza-photo video{width:100%;height:100%;object-fit:cover}
-.gyoza-flavors{display:flex;flex-direction:column;gap:10px;text-align:left}
+.gyoza-flavors{display:flex;flex-direction:column;gap:5px;text-align:left}
 .gyoza-flavor-row{
-  display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);
-  border-radius:14px;padding:10px 12px;
+  display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);
+  border-radius:10px;padding:5px 9px;
 }
-.gyoza-flavor-row .mf-name{flex:1;font-weight:800;font-size:14px}
-.gyoza-total{margin-top:18px;font-weight:800;font-size:14px;color:var(--blue)}
-#gyozaConfirm{width:100%;margin-top:14px}
+.gyoza-flavor-row .mf-name{flex:1;font-weight:800;font-size:12px;line-height:1.15}
+.gyoza-flavor-row .qty{gap:6px}
+.gyoza-flavor-row .qty button{width:22px;height:22px;border-radius:6px;font-size:13px}
+.gyoza-flavor-row .qty span{min-width:14px;font-size:12px}
+.gyoza-total{margin-top:9px;font-weight:800;font-size:12.5px;color:var(--blue)}
+#gyozaConfirm{width:100%;margin-top:9px;padding:11px 18px;font-size:13px}
 #gyozaConfirm:disabled{background:var(--line);border-color:var(--line);color:var(--dim);cursor:not-allowed}
 
 /* ---------- VOLVER ARRIBA ---------- */
