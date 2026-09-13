@@ -98,7 +98,7 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
 
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  .doodles::before,.doodles::after,.marquee-track,.hero-char,.catnav-hint{animation:none!important}
+  .doodles::before,.doodles::after,.marquee-track,.hero-char{animation:none!important}
   .reveal{opacity:1;transform:none;transition:none}
 }
 
@@ -249,29 +249,21 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
 }
 .catnav a:hover{background:var(--blue-soft)}
 .catnav a.active{background:var(--blue);color:#fff}
-/* Indicador de que la barra se puede deslizar */
+/* Indicador de que la barra se puede deslizar: un desvanecido suave
+   en los bordes (más marcado a la derecha, que es por donde hay más
+   contenido al principio) que desaparece al llegar al final. */
 .catnav-wrap::after{
-  content:"";position:absolute;top:0;right:0;bottom:0;width:34px;
-  background:linear-gradient(to right,rgba(250,250,255,0),#FAFAFF 75%);
+  content:"";position:absolute;top:0;right:0;bottom:0;width:40px;
+  background:linear-gradient(to right,rgba(250,250,255,0),#FAFAFF 80%);
   pointer-events:none;opacity:1;transition:opacity .25s ease;
 }
 .catnav-wrap::before{
-  content:"";position:absolute;top:0;left:0;bottom:0;width:24px;z-index:1;
-  background:linear-gradient(to left,rgba(250,250,255,0),#FAFAFF 75%);
+  content:"";position:absolute;top:0;left:0;bottom:0;width:28px;z-index:1;
+  background:linear-gradient(to left,rgba(250,250,255,0),#FAFAFF 80%);
   pointer-events:none;opacity:0;transition:opacity .25s ease;
 }
 .catnav-wrap.scrolled::before{opacity:1}
 .catnav-wrap.at-end::after{opacity:0}
-.catnav-hint{
-  position:absolute;top:50%;right:2px;transform:translateY(-50%);
-  width:22px;height:22px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  background:var(--blue);color:#fff;font-weight:900;font-size:13px;line-height:1;
-  pointer-events:none;box-shadow:0 3px 8px rgba(41,50,217,.35);
-  animation:catnavHint 1.6s ease-in-out infinite;transition:opacity .25s ease;
-}
-.catnav-wrap.at-end .catnav-hint{opacity:0}
-@keyframes catnavHint{0%,100%{transform:translateY(-50%) translateX(0)}50%{transform:translateY(-50%) translateX(4px)}}
 .section-head,.order,#poke,#info{scroll-margin-top:64px}
 @media(max-width:480px){.status-pill{font-size:9.5px;padding:7px 9px;gap:4px}}
 
@@ -592,6 +584,39 @@ footer{
 #mochiConfirm{width:100%;margin-top:14px}
 #mochiConfirm:disabled{background:var(--line);border-color:var(--line);color:var(--dim);cursor:not-allowed}
 
+/* ---------- SELECTOR DE VARIANTES DE GYOZA ---------- */
+#gyozaModalOverlay{
+  position:fixed;inset:0;z-index:120;
+  background:rgba(20,22,60,.55);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+#gyozaModalOverlay[hidden]{display:none}
+#gyozaModalOverlay.show{opacity:1;pointer-events:auto}
+#gyozaModalCard{
+  background:#fff;border:3px solid var(--blue);border-radius:26px;
+  max-width:380px;width:100%;padding:30px 26px 26px;text-align:center;position:relative;
+  box-shadow:10px 12px 0 rgba(41,50,217,.25);
+  transform:scale(.85) rotate(-1deg);opacity:0;transition:transform .28s cubic-bezier(.34,1.56,.64,1),opacity .2s;
+  max-height:88vh;overflow-y:auto;
+}
+#gyozaModalOverlay.show #gyozaModalCard{transform:scale(1) rotate(0deg);opacity:1}
+#gyozaModalCard h3{font-size:19px;font-weight:800;color:var(--blue);margin-bottom:6px}
+.gyoza-photo{
+  width:100%;aspect-ratio:16/10;border-radius:16px;overflow:hidden;
+  margin-bottom:16px;background:var(--blue-soft);
+}
+.gyoza-photo img,.gyoza-photo video{width:100%;height:100%;object-fit:cover}
+.gyoza-flavors{display:flex;flex-direction:column;gap:10px;text-align:left}
+.gyoza-flavor-row{
+  display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);
+  border-radius:14px;padding:10px 12px;
+}
+.gyoza-flavor-row .mf-name{flex:1;font-weight:800;font-size:14px}
+.gyoza-total{margin-top:18px;font-weight:800;font-size:14px;color:var(--blue)}
+#gyozaConfirm{width:100%;margin-top:14px}
+#gyozaConfirm:disabled{background:var(--line);border-color:var(--line);color:var(--dim);cursor:not-allowed}
+
 /* ---------- VOLVER ARRIBA ---------- */
 #backToTop{
   position:fixed;left:18px;bottom:18px;z-index:59;
@@ -803,7 +828,6 @@ footer{
   <div class="status-pill" id="statusPill" aria-live="polite"><span class="dot"></span><span class="txt">…</span></div>
   <div class="catnav-wrap" id="catNavWrap">
     <nav class="catnav" id="catNav" aria-label="Categorías de la carta"></nav>
-    <span class="catnav-hint" aria-hidden="true">›</span>
   </div>
 </div>
 
@@ -936,6 +960,18 @@ footer{
     <div class="mochi-flavors" id="mochiFlavors"></div>
     <div class="mochi-total">Seleccionadas: <span id="mochiCount">0</span> / 2</div>
     <button id="mochiConfirm" class="wa-btn" disabled>Añadir al carrito</button>
+  </div>
+</div>
+
+<div id="gyozaModalOverlay" hidden>
+  <div id="gyozaModalCard" role="dialog" aria-modal="true" aria-label="Elige tus gyozas">
+    <button class="mochi-close" id="gyozaClose" aria-label="Cerrar">×</button>
+    <div class="gyoza-photo"><img src="img/gyozas-langostino.jpg" alt="Gyozas YOKAI"></div>
+    <h3>Elige tus gyozas</h3>
+    <p class="mochi-sub">Cada pack son 4 unidades de un mismo tipo, a <span id="gyozaPrice"></span> — añade los packs que quieras de cada uno</p>
+    <div class="gyoza-flavors" id="gyozaFlavors"></div>
+    <div class="gyoza-total">Total: <span id="gyozaCount">0</span> packs</div>
+    <button id="gyozaConfirm" class="wa-btn" disabled>Añadir al carrito</button>
   </div>
 </div>
 <button id="backToTop" aria-label="Volver arriba">↑</button>
@@ -1762,6 +1798,7 @@ document.addEventListener("click", e => {
   const b = e.target.closest(".add-btn");
   if(!b) return;
   if(b.dataset.name === "Mochi"){ openMochiPicker(b.dataset.price); return; }
+  if(b.dataset.name === "Gyozas"){ openGyozaPicker(b.dataset.price); return; }
   const key = keyOf(b.dataset.name, b.dataset.label);
   const item = cart.find(i => i.key === key);
   if(item) item.qty++;
@@ -1837,6 +1874,77 @@ document.getElementById("mochiConfirm").addEventListener("click", () => {
   renderCart();
   closeMochiPicker();
   showToast("Mochi añadido 🍡");
+});
+
+/* ---- Selector de variantes de Gyoza (packs de 4 uds, no combinables entre sí) ---- */
+const GYOZA_VARIANTS = [
+  "Langostino al vapor", "Pollo al vapor", "Vegetales al vapor",
+  "Langostino frita", "Pollo frita", "Vegetales frita"
+];
+const GYOZA_PACK_SIZE = 4;
+let gyozaState = {};
+let gyozaPackPrice = 0;
+
+function gyozaTotal(){
+  return Object.values(gyozaState).reduce((s,n) => s + n, 0);
+}
+function renderGyozaFlavors(){
+  const total = gyozaTotal();
+  document.getElementById("gyozaFlavors").innerHTML = GYOZA_VARIANTS.map(f => {
+    const n = gyozaState[f] || 0;
+    return `
+    <div class="gyoza-flavor-row">
+      <span class="mf-name">${f}</span>
+      <div class="qty">
+        <button class="gyoza-minus" data-flavor="${f}" ${n===0 ? "disabled" : ""}>−</button>
+        <span>${n}</span>
+        <button class="gyoza-plus" data-flavor="${f}">+</button>
+      </div>
+    </div>`;
+  }).join("");
+  document.getElementById("gyozaCount").textContent = total;
+  document.getElementById("gyozaConfirm").disabled = total === 0;
+}
+function openGyozaPicker(price){
+  gyozaPackPrice = toNum(price);
+  gyozaState = {};
+  document.getElementById("gyozaPrice").textContent = toEur(gyozaPackPrice);
+  renderGyozaFlavors();
+  const overlay = document.getElementById("gyozaModalOverlay");
+  overlay.hidden = false;
+  requestAnimationFrame(() => overlay.classList.add("show"));
+}
+function closeGyozaPicker(){
+  document.getElementById("gyozaModalOverlay").classList.remove("show");
+}
+document.getElementById("gyozaClose").addEventListener("click", closeGyozaPicker);
+document.getElementById("gyozaModalOverlay").addEventListener("click", e => {
+  if(e.target.id === "gyozaModalOverlay") closeGyozaPicker();
+});
+document.addEventListener("click", e => {
+  const plus = e.target.closest(".gyoza-plus");
+  const minus = e.target.closest(".gyoza-minus");
+  if(plus){
+    const f = plus.dataset.flavor;
+    gyozaState[f] = (gyozaState[f]||0) + 1;
+    renderGyozaFlavors();
+  }
+  if(minus && !minus.disabled){
+    const f = minus.dataset.flavor;
+    gyozaState[f] = Math.max(0, (gyozaState[f]||0) - 1);
+    renderGyozaFlavors();
+  }
+});
+document.getElementById("gyozaConfirm").addEventListener("click", () => {
+  GYOZA_VARIANTS.filter(f => gyozaState[f] > 0).forEach(f => {
+    const key = keyOf("Gyozas", f);
+    const item = cart.find(i => i.key === key);
+    if(item) item.qty += gyozaState[f];
+    else cart.push({ key, price: gyozaPackPrice, qty: gyozaState[f], detail: `${GYOZA_PACK_SIZE} uds` });
+  });
+  renderCart();
+  closeGyozaPicker();
+  showToast("Gyozas añadidas 🥟");
 });
 
 function refreshAddButtons(){
