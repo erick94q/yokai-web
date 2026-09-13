@@ -98,7 +98,7 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
 
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  .doodles::before,.doodles::after,.marquee-track,.hero-char{animation:none!important}
+  .doodles::before,.doodles::after,.marquee-track,.hero-char,.catnav-hint{animation:none!important}
   .reveal{opacity:1;transform:none;transition:none}
 }
 
@@ -132,8 +132,13 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
 }
 .wordmark-img{width:clamp(240px,42vw,520px);height:auto;margin:0 auto;display:block}
 .hero .sub{
-  margin:24px auto 0;max-width:520px;font-size:clamp(16px,2.4vw,19px);
-  line-height:1.6;color:var(--dim);font-weight:500;
+  margin:24px auto 0;max-width:560px;font-size:clamp(17px,2.8vw,21px);
+  line-height:1.55;color:var(--blue);font-weight:700;
+}
+.hero .sub strong{
+  color:var(--blue-dark);font-weight:800;
+  background:linear-gradient(180deg,transparent 62%,var(--blue-soft) 0);
+  padding:0 2px;
 }
 .hero-ctas{margin-top:34px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .hero-quick{margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
@@ -230,8 +235,9 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
 .status-pill .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
 .status-pill.open{background:#E8F8EE;border-color:#2FA45C;color:#1E7A42}
 .status-pill.closed{background:#FDECEC;border-color:#D64545;color:#B03030}
+.catnav-wrap{flex:1;min-width:0;position:relative}
 .catnav{
-  flex:1;display:flex;gap:8px;overflow-x:auto;min-width:0;
+  display:flex;gap:8px;overflow-x:auto;min-width:0;
   scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:auto;
 }
 .catnav::-webkit-scrollbar{display:none}
@@ -243,6 +249,29 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
 }
 .catnav a:hover{background:var(--blue-soft)}
 .catnav a.active{background:var(--blue);color:#fff}
+/* Indicador de que la barra se puede deslizar */
+.catnav-wrap::after{
+  content:"";position:absolute;top:0;right:0;bottom:0;width:34px;
+  background:linear-gradient(to right,rgba(250,250,255,0),#FAFAFF 75%);
+  pointer-events:none;opacity:1;transition:opacity .25s ease;
+}
+.catnav-wrap::before{
+  content:"";position:absolute;top:0;left:0;bottom:0;width:24px;z-index:1;
+  background:linear-gradient(to left,rgba(250,250,255,0),#FAFAFF 75%);
+  pointer-events:none;opacity:0;transition:opacity .25s ease;
+}
+.catnav-wrap.scrolled::before{opacity:1}
+.catnav-wrap.at-end::after{opacity:0}
+.catnav-hint{
+  position:absolute;top:50%;right:2px;transform:translateY(-50%);
+  width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--blue);color:#fff;font-weight:900;font-size:13px;line-height:1;
+  pointer-events:none;box-shadow:0 3px 8px rgba(41,50,217,.35);
+  animation:catnavHint 1.6s ease-in-out infinite;transition:opacity .25s ease;
+}
+.catnav-wrap.at-end .catnav-hint{opacity:0}
+@keyframes catnavHint{0%,100%{transform:translateY(-50%) translateX(0)}50%{transform:translateY(-50%) translateX(4px)}}
 .section-head,.order,#poke,#info{scroll-margin-top:64px}
 @media(max-width:480px){.status-pill{font-size:9.5px;padding:7px 9px;gap:4px}}
 
@@ -663,6 +692,8 @@ footer{
   background:#fff;font-weight:600;
 }
 .cart-fields ::placeholder{color:var(--dim)}
+.name-row{display:flex;gap:10px;margin-top:10px}
+.name-row input{margin-top:0;flex:1;min-width:0}
 .mode-hint{
   margin-top:10px;background:var(--blue-soft);border:2px solid var(--line);
   border-radius:13px;padding:11px 13px;font-size:13px;line-height:1.5;font-weight:600;
@@ -738,7 +769,7 @@ footer{
     <div class="hero-eyebrow">Cocina japonesa · Onda</div>
     <img class="wordmark-img" src="img/logo-largo-azul.png" alt="YOKAI">
     <div class="soon-badge">🎁 Club YOKAI — muy pronto: pide, acumula, gana</div>
-    <p class="sub">El Japón más urbano y auténtico, en Onda. Comida japonesa fresca, hecha al momento y pensada para tu día a día.</p>
+    <p class="sub">El <strong>Japón más urbano y auténtico</strong>, en Onda. Comida japonesa fresca, hecha al momento y pensada para tu día a día.</p>
     <div class="hero-ctas">
       <a class="btn primary" href="#carta">Ver la carta</a>
       <button class="btn line" onclick="openCart()">🛒 Mi pedido</button>
@@ -770,7 +801,10 @@ footer{
 
 <div class="catnav-bar">
   <div class="status-pill" id="statusPill" aria-live="polite"><span class="dot"></span><span class="txt">…</span></div>
-  <nav class="catnav" id="catNav" aria-label="Categorías de la carta"></nav>
+  <div class="catnav-wrap" id="catNavWrap">
+    <nav class="catnav" id="catNav" aria-label="Categorías de la carta"></nav>
+    <span class="catnav-hint" aria-hidden="true">›</span>
+  </div>
 </div>
 
 <section class="order reveal" id="pedir">
@@ -813,7 +847,7 @@ footer{
       <div class="poke-step"><span class="num">02</span><h3>Tamaño</h3><div class="chips" data-group="size" data-type="single"></div></div>
       <div class="poke-step"><span class="num">03</span><h3>La proteína</h3><div class="chips" data-group="protein" data-type="single"></div></div>
       <div class="poke-step"><span class="num">04</span><h3>Toppings <small>(hasta 5)</small></h3><div class="chips" data-group="toppings" data-type="multi" data-max="5"></div></div>
-      <div class="poke-step"><span class="num">05</span><h3>Toppings secos</h3><div class="chips" data-group="dry" data-type="multi"></div></div>
+      <div class="poke-step"><span class="num">05</span><h3>Toppings secos <small>(hasta 2)</small></h3><div class="chips" data-group="dry" data-type="multi" data-max="2"></div></div>
       <div class="poke-step"><span class="num">06</span><h3>La salsa</h3><div class="chips" data-group="sauce" data-type="single"></div></div>
       <div class="poke-foot">
         <div class="poke-total">Total <span id="pokeTotal">10,99€</span></div>
@@ -963,7 +997,10 @@ footer{
   <!-- PASO 4: datos y envío -->
   <div class="checkout-step" id="step4" hidden>
     <div class="cart-fields">
-      <input type="text" id="fName" placeholder="Tu nombre">
+      <div class="name-row">
+        <input type="text" id="fName" placeholder="Nombre*">
+        <input type="text" id="fSurname" placeholder="Apellidos*">
+      </div>
       <input type="tel" id="fPhone" placeholder="Tu teléfono" inputmode="tel">
       <div class="mode-hint" id="phoneHint">📱 Lo usamos para tu pedido y tu progreso en el <b>club YOKAI</b> — nunca se comparte con nadie.</div>
       <select id="fMode">
@@ -973,7 +1010,8 @@ footer{
       <select id="fZone" hidden>
         <option value="" selected disabled>¿A qué localidad?</option>
       </select>
-      <div class="mode-hint" id="modeHint" hidden>📍 Al enviar el pedido, comparte tu <b>ubicación</b> en el chat de WhatsApp — un toque y listo, sin escribir la dirección.</div>
+      <input type="text" id="fAddress" placeholder="Dirección de entrega (calle, número, piso)*" hidden>
+      <div class="mode-hint" id="modeHint" hidden>📍 Si quieres, cuando se abra WhatsApp también puedes compartir tu <b>ubicación</b> — es opcional, solo para afinar la entrega.</div>
       <div class="mode-hint" id="timeHint" hidden></div>
       <div class="mode-hint warn" id="minOrderNote" hidden></div>
       <textarea id="fNotes" placeholder="Notas: sin cebolla, alergias, portal, timbre..."></textarea>
@@ -1390,6 +1428,25 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
   tabs.splice(SECTIONS.length, 0, { id: "poke", label: "Poke" });
   nav.innerHTML = tabs.map(t => `<a href="#${t.id}" data-target="${t.id}">${t.label}</a>`).join("");
 
+  /* Indicador de que la barra de categorías se puede deslizar */
+  const navWrap = document.getElementById("catNavWrap");
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function updateNavEdges(){
+    if(!navWrap) return;
+    const scrollable = nav.scrollWidth > nav.clientWidth + 2;
+    navWrap.classList.toggle("scrolled", nav.scrollLeft > 4);
+    navWrap.classList.toggle("at-end", !scrollable || nav.scrollLeft + nav.clientWidth >= nav.scrollWidth - 4);
+  }
+  nav.addEventListener("scroll", updateNavEdges, { passive: true });
+  window.addEventListener("resize", updateNavEdges);
+  updateNavEdges();
+  if(!reduceMotion && nav.scrollWidth > nav.clientWidth + 2){
+    setTimeout(() => {
+      nav.scrollBy({ left: 46, behavior: "smooth" });
+      setTimeout(() => nav.scrollBy({ left: -46, behavior: "smooth" }), 650);
+    }, 900);
+  }
+
   const navLinks = nav.querySelectorAll("a");
   function centerActiveTab(activeEl){
     if(!activeEl) return;
@@ -1501,7 +1558,8 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
         else if(state.toppings.length < 5) state.toppings.push(v);
       } else if(g === "dry"){
         const i = state.dry.indexOf(v);
-        if(i >= 0) state.dry.splice(i,1); else state.dry.push(v);
+        if(i >= 0) state.dry.splice(i,1);
+        else if(state.dry.length < 2) state.dry.push(v);
       } else {
         state[g] = (state[g] === v && (g === "protein" || g === "sauce")) ? null : v;
       }
@@ -1873,6 +1931,7 @@ function updateZoneHints(){
   const isDelivery = document.getElementById("fMode").value === "Entrega a domicilio";
   const zoneSelect = document.getElementById("fZone");
   zoneSelect.hidden = !isDelivery;
+  document.getElementById("fAddress").hidden = !isDelivery;
   document.getElementById("modeHint").hidden = !isDelivery;
 
   const th = document.getElementById("timeHint");
@@ -2046,15 +2105,32 @@ waSend.addEventListener("click", async () => {
     if(!seguir) return;
   }
   const name = document.getElementById("fName").value.trim();
+  const surname = document.getElementById("fSurname").value.trim();
   const phone = document.getElementById("fPhone").value.trim();
   const mode = document.getElementById("fMode").value;
   const zone = currentZone();
+  const address = document.getElementById("fAddress").value.trim();
   const notes = document.getElementById("fNotes").value.trim();
   const total = cart.reduce((s,i) => s + i.qty * i.price, 0);
 
+  if(!name){
+    document.getElementById("fName").focus();
+    showToast("Escribe tu nombre");
+    return;
+  }
+  if(!surname){
+    document.getElementById("fSurname").focus();
+    showToast("Escribe tus apellidos");
+    return;
+  }
   if(mode === "Entrega a domicilio" && !zone){
     document.getElementById("fZone").focus();
     showToast("Elige tu localidad para la entrega");
+    return;
+  }
+  if(mode === "Entrega a domicilio" && !address){
+    document.getElementById("fAddress").focus();
+    showToast("Escribe la dirección de entrega");
     return;
   }
   if(mode === "Entrega a domicilio" && zone && total < zone.minOrder){
@@ -2105,13 +2181,15 @@ waSend.addEventListener("click", async () => {
   msg += `Modo: ${mode}\n`;
   if(zone && zone.schedule !== null) msg += `Localidad: ${zone.name} — reparto ${zone.dayLabel} ${zone.time}\n`;
   else if(zone) msg += `Localidad: ${zone.name}\n`;
+  if(address) msg += `Dirección: ${address}\n`;
 
   msg += `\n*CLIENTE*\n`;
-  if(name)  msg += `Nombre: ${name}\n`;
+  const fullName = [name, surname].filter(Boolean).join(" ");
+  if(fullName) msg += `Nombre: ${fullName}\n`;
   if(phone) msg += `Teléfono: ${phone}\n`;
   if(notes) msg += `\n*NOTAS*\n${notes}\n`;
 
-  if(mode === "Entrega a domicilio") msg += `\n📍 A continuación comparto mi ubicación exacta ⬇️\n`;
+  if(mode === "Entrega a domicilio") msg += `\n📍 Si quieres, también puedo compartir mi ubicación exacta por WhatsApp para mayor precisión.\n`;
   if(rewardLine) msg += rewardLine;
 
   const waLink = "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(msg);
@@ -2134,8 +2212,10 @@ waSend.addEventListener("click", async () => {
 (function(){
   const fields = [
     { el: document.getElementById("fName"), key: "yokai_name" },
+    { el: document.getElementById("fSurname"), key: "yokai_surname" },
     { el: document.getElementById("fPhone"), key: "yokai_phone" },
-    { el: document.getElementById("fMode"), key: "yokai_mode" }
+    { el: document.getElementById("fMode"), key: "yokai_mode" },
+    { el: document.getElementById("fAddress"), key: "yokai_address" }
   ];
   fields.forEach(({el, key}) => {
     if(!el) return;
