@@ -447,6 +447,10 @@ section,main,.section-head{position:relative;z-index:2}
   background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.35);
   color:#fff;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:700;
 }
+.order-note{
+  margin-top:16px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.85);
+  max-width:440px;
+}
 .order-char-badge{
   width:clamp(190px,26vw,290px);aspect-ratio:1;border-radius:50%;
   background:#fff;justify-self:center;position:relative;
@@ -805,6 +809,7 @@ footer{
         <h2>¿PEDIMOS?</h2>
         <p>Monta tu pedido aquí mismo y envíanoslo por WhatsApp. Recogida en el local o entrega a domicilio en Onda.</p>
         <div class="order-info-row" id="orderInfoRow"></div>
+        <p class="order-note">🍣 Nuestro sushi se prepara al momento, no antes — en días de mucha demanda, el tiempo total puede alargarse un poco, ya que se suma la preparación y el reparto. ¡Gracias por la paciencia!</p>
       </div>
       <div class="order-char-badge">
         <img class="order-char" src="img/char-nigiri.png" alt="Personaje YOKAI celebrando con palillos">
@@ -819,7 +824,7 @@ footer{
   <img class="logo-box-img" src="img/logo-cuadrado-azul.png" alt="YOKAI"><br>
   Calle Ben al Abbar 24 bajo · 12200 Onda, Castellón<br>
   Información de alérgenos disponible en el local<br>
-  hecho con 🍜 en Onda
+  hecho con ❤️ en Onda
   <div class="legal-links">
     <a href="aviso-legal.html">Aviso legal</a> ·
     <a href="privacidad.html">Privacidad</a> ·
@@ -1689,7 +1694,7 @@ function updateZoneHints(){
   } else {
     th.hidden = false;
     th.innerHTML = zone.schedule === null
-      ? `⏱ Tiempo estimado de entrega: <b>${ESTIMATED_TIME}</b> (puede variar según demanda).`
+      ? `⏱ Tiempo estimado de entrega: <b>${ESTIMATED_TIME}</b>. Se prepara al momento, así que en horas punta puede tardar algo más.`
       : `📅 Reparto en <b>${zone.name}</b> los <b>${zone.dayLabel}</b>, de <b>${zone.time}</b>. Pide con ${ADVANCE_NOTICE_HOURS}h de antelación para asegurar tu entrega ese día.`;
   }
   updateMinOrderNote();
