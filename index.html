@@ -380,6 +380,11 @@ section,main,.section-head{position:relative;z-index:2}
 }
 .drink:hover{transform:translateY(-4px)}
 .drink .emoji{font-size:40px}
+.drink .drink-media{
+  width:88px;height:88px;border-radius:50%;margin:0 auto;overflow:hidden;
+  background:var(--blue-soft);display:flex;align-items:center;justify-content:center;
+}
+.drink .drink-media img,.drink .drink-media video{width:100%;height:100%;object-fit:cover}
 .drink .n{font-weight:800;margin-top:12px;font-size:14px}
 .drink .p{font-family:'DM Sans',sans-serif;font-weight:800;margin-top:6px;font-size:16px}
 .drink .add-btn{margin-top:14px}
@@ -661,6 +666,11 @@ footer{
   border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;
 }
 .drink-row .dr-emoji{font-size:24px;flex:0 0 auto}
+.drink-row .dr-media{
+  width:40px;height:40px;border-radius:50%;flex:0 0 auto;overflow:hidden;
+  background:var(--blue-soft);
+}
+.drink-row .dr-media img,.drink-row .dr-media video{width:100%;height:100%;object-fit:cover}
 .drink-row .dr-name{flex:1;font-weight:800;font-size:14px}
 .drink-row .dr-price{font-weight:800;color:var(--dim);font-size:13px}
 .drink-row button{
@@ -1210,7 +1220,7 @@ function buildFromSheet(rows){
       sauces.push({ emoji: col(r,"emoji") || "🥣", n: col(r,"nombre"), d: col(r,"descripcion") });
     } else if(tipo === "bebida"){
       const p = parsePrices(col(r,"precios"));
-      drinks.push({ emoji: col(r,"emoji") || "🥤", n: col(r,"nombre"), p: p.length ? p[0].value : "" });
+      drinks.push({ emoji: col(r,"emoji") || "🥤", n: col(r,"nombre"), p: p.length ? p[0].value : "", media: col(r,"media") });
     } else {
       const secName = col(r,"seccion") || "CARTA";
       if(!secMap[secName]){
@@ -1311,7 +1321,11 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES){
   });
 
   document.getElementById("drinkGrid").innerHTML = DRINKS.map(d => `
-    <div class="drink reveal"><div class="emoji">${d.emoji}</div><div class="n">${d.n}</div><div class="p">${d.p}</div>
+    <div class="drink reveal">
+      ${d.media
+        ? `<div class="drink-media">${mediaTag(d.media, true, d.n + " — YOKAI Onda")}</div>`
+        : `<div class="emoji">${d.emoji}</div>`}
+      <div class="n">${d.n}</div><div class="p">${d.p}</div>
       <button class="add-btn" data-name="${d.n}" data-label="" data-price="${d.p}"><span class="plus">+</span><span class="txt">Añadir</span></button>
     </div>`).join("");
 
@@ -1826,18 +1840,35 @@ function renderDrinksUpsell(){
   box.innerHTML = ALL_DRINKS.map(d => {
     const key = keyOf(d.n, "");
     const inCart = cart.find(i => i.key === key);
+    const control = inCart
+      ? `<div class="qty">
+           <button class="drink-minus" data-name="${d.n}">−</button>
+           <span>${inCart.qty}</span>
+           <button class="drink-add" data-name="${d.n}" data-price="${d.p}">+</button>
+         </div>`
+      : `<button class="drink-add" data-name="${d.n}" data-price="${d.p}">+ Añadir</button>`;
     return `
     <div class="drink-row ${inCart ? "in-cart" : ""}">
-      <span class="dr-emoji">${d.emoji || "🥤"}</span>
+      ${d.media
+        ? `<div class="dr-media">${mediaTag(d.media, true, d.n)}</div>`
+        : `<span class="dr-emoji">${d.emoji || "🥤"}</span>`}
       <span class="dr-name">${d.n}</span>
       <span class="dr-price">${d.p}</span>
-      <button class="drink-add" data-name="${d.n}" data-price="${d.p}">${inCart ? `En el pedido ×${inCart.qty}` : "+ Añadir"}</button>
+      ${control}
     </div>`;
   }).join("");
   updateDrinksNextLabel();
 }
 
 document.addEventListener("click", e => {
+  const minus = e.target.closest(".drink-minus");
+  if(minus){
+    const key = keyOf(minus.dataset.name, "");
+    const idx = cart.findIndex(i => i.key === key);
+    if(idx > -1) changeQty(idx, -1);
+    renderDrinksUpsell();
+    return;
+  }
   const b = e.target.closest(".drink-add");
   if(!b) return;
   const key = keyOf(b.dataset.name, "");
