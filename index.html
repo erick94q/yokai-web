@@ -807,7 +807,7 @@ footer{
   <div class="poke-wrap reveal">
     <img class="poke-char" src="img/char-chopstick.png" alt="Personaje YOKAI comiendo un nigiri">
     <div class="poke-card">
-      <div class="poke-media"><img src="img/poke.jpg" alt="Poke bowl YOKAI"></div>
+      <div class="poke-media" id="pokeMedia"><img src="img/poke.jpg" alt="Poke bowl YOKAI"></div>
       <p class="poke-sub">Arroz sushi de base, tu proteína, hasta 5 toppings y la salsa perfecta.</p>
       <div class="poke-step"><span class="num">01</span><h3>La base</h3><div class="chips" data-group="base" data-type="single"></div></div>
       <div class="poke-step"><span class="num">02</span><h3>Tamaño</h3><div class="chips" data-group="size" data-type="single"></div></div>
@@ -1255,11 +1255,14 @@ function buildFromSheet(rows){
   const sections = [], sauces = [], drinks = [], favorites = [];
   const secMap = {};
 
+  let pokeMedia = "";
   for(const r of rows.slice(1)){
     const visible = col(r, "visible").toLowerCase();
     if(visible === "no" || visible === "0") continue;
     const tipo = col(r, "tipo").toLowerCase();
-    if(tipo === "salsa"){
+    if(tipo === "poke_media"){
+      pokeMedia = col(r,"media");
+    } else if(tipo === "salsa"){
       sauces.push({ emoji: col(r,"emoji") || "🥣", n: col(r,"nombre"), d: col(r,"descripcion") });
     } else if(tipo === "bebida"){
       const p = parsePrices(col(r,"precios"));
@@ -1283,7 +1286,7 @@ function buildFromSheet(rows){
       if(col(r,"destacado").toLowerCase() === "si") favorites.push(dish);
     }
   }
-  return { sections, sauces, drinks, favorites };
+  return { sections, sauces, drinks, favorites, pokeMedia };
 }
 
 /* ---- Render ---- */
@@ -1296,8 +1299,13 @@ function allergensHTML(list){
 
 let ALL_DRINKS = [];
 
-function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES){
+function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
   ALL_DRINKS = DRINKS || [];
+
+  if(POKE_MEDIA){
+    const pokeBox = document.getElementById("pokeMedia");
+    if(pokeBox) pokeBox.innerHTML = mediaTag(POKE_MEDIA, true, "Poke bowl YOKAI");
+  }
 
   const favBox = document.getElementById("favoritos");
   const favGrid = document.getElementById("favoritosGrid");
@@ -1439,12 +1447,12 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES){
       const data = buildFromSheet(parseCSV(await res.text()));
       if(data.sections.length || data.sauces.length || data.drinks.length){
         renderAll(data.sections, data.sauces.length ? data.sauces : DEFAULT_SAUCES,
-                  data.drinks.length ? data.drinks : DEFAULT_DRINKS, data.favorites);
+                  data.drinks.length ? data.drinks : DEFAULT_DRINKS, data.favorites, data.pokeMedia);
         return;
       }
     }catch(err){ console.warn("No se pudo leer la hoja, usando carta local:", err); }
   }
-  renderAll(DEFAULT_SECTIONS, DEFAULT_SAUCES, DEFAULT_DRINKS, []);
+  renderAll(DEFAULT_SECTIONS, DEFAULT_SAUCES, DEFAULT_DRINKS, [], "");
 })();
 
 
