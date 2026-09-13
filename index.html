@@ -535,6 +535,7 @@ footer{
   transition:opacity .2s,transform .2s;
 }
 #backToTop.show{opacity:1;pointer-events:auto}
+#backToTop.fab-hidden{opacity:0 !important;pointer-events:none}
 #backToTop:hover{transform:translateY(-3px)}
 
 /* ---------- REPETIR PEDIDO ---------- */
@@ -567,8 +568,9 @@ footer{
   border-radius:999px;padding:16px 24px;
   font-family:'DM Sans',sans-serif;font-weight:800;font-size:13px;letter-spacing:.03em;
   box-shadow:0 10px 30px rgba(41,50,217,.4);
-  display:flex;align-items:center;gap:10px;transition:.2s;
+  display:flex;align-items:center;gap:10px;transition:.25s;
 }
+#cartFab.fab-hidden{opacity:0;pointer-events:none;transform:translateY(20px) scale(.9)}
 #cartFab:hover{background:var(--blue-dark);transform:translateY(-2px)}
 #cartFab .count{
   background:#fff;color:var(--blue);border-radius:999px;
@@ -1597,6 +1599,22 @@ function showBrandModal({ char = "img/char-chopstick.png", title = "", msg = "",
     btn.classList.toggle("show", scrollY > 700);
   }, { passive: true });
   btn.addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
+})();
+
+/* ---- Ocultar el botón flotante del carrito al llegar al pie de página,
+   para que no tape los enlaces legales ---- */
+(function(){
+  const footerEl = document.querySelector("footer");
+  const fabEl = document.getElementById("cartFab");
+  const topEl = document.getElementById("backToTop");
+  if(!footerEl) return;
+  const footerObserver = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if(fabEl) fabEl.classList.toggle("fab-hidden", e.isIntersecting);
+      if(topEl) topEl.classList.toggle("fab-hidden", e.isIntersecting);
+    });
+  }, { rootMargin: "0px 0px -40px 0px" });
+  footerObserver.observe(footerEl);
 })();
 
 /* ---- Carrito → WhatsApp ---- */
