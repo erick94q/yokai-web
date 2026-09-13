@@ -244,7 +244,7 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
 .catnav a:hover{background:var(--blue-soft)}
 .catnav a.active{background:var(--blue);color:#fff}
 .section-head,.order,#poke,#info{scroll-margin-top:64px}
-@media(max-width:480px){.status-pill span.txt{display:none}}
+@media(max-width:480px){.status-pill{font-size:9.5px;padding:7px 9px;gap:4px}}
 
 /* ---------- SECCIONES ---------- */
 section,main,.section-head{position:relative;z-index:2}
@@ -530,6 +530,38 @@ footer{
 #brandModalActions .bm-ghost{background:#fff;color:var(--blue)}
 #brandModalActions .bm-ghost:hover{background:var(--blue-soft)}
 @media(prefers-reduced-motion:reduce){#brandModalChar{animation:none}#brandModalCard{transition:opacity .2s}}
+
+/* ---------- SELECTOR DE SABORES DE MOCHI ---------- */
+#mochiModalOverlay{
+  position:fixed;inset:0;z-index:120;
+  background:rgba(20,22,60,.55);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+#mochiModalOverlay[hidden]{display:none}
+#mochiModalOverlay.show{opacity:1;pointer-events:auto}
+#mochiModalCard{
+  background:#fff;border:3px solid var(--blue);border-radius:26px;
+  max-width:380px;width:100%;padding:30px 26px 26px;text-align:center;position:relative;
+  box-shadow:10px 12px 0 rgba(41,50,217,.25);
+  transform:scale(.85) rotate(-1deg);opacity:0;transition:transform .28s cubic-bezier(.34,1.56,.64,1),opacity .2s;
+}
+#mochiModalOverlay.show #mochiModalCard{transform:scale(1) rotate(0deg);opacity:1}
+#mochiModalCard h3{font-size:19px;font-weight:800;color:var(--blue);margin-bottom:6px}
+.mochi-sub{font-size:13px;color:var(--dim);font-weight:600;margin-bottom:18px}
+.mochi-close{
+  position:absolute;top:14px;right:14px;background:none;border:none;
+  font-size:22px;color:var(--dim);cursor:pointer;line-height:1;padding:4px;
+}
+.mochi-flavors{display:flex;flex-direction:column;gap:10px;text-align:left}
+.mochi-flavor-row{
+  display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);
+  border-radius:14px;padding:10px 12px;
+}
+.mochi-flavor-row .mf-name{flex:1;font-weight:800;font-size:14px}
+.mochi-total{margin-top:18px;font-weight:800;font-size:14px;color:var(--blue)}
+#mochiConfirm{width:100%;margin-top:14px}
+#mochiConfirm:disabled{background:var(--line);border-color:var(--line);color:var(--dim);cursor:not-allowed}
 
 /* ---------- VOLVER ARRIBA ---------- */
 #backToTop{
@@ -859,6 +891,17 @@ footer{
     <h3 id="brandModalTitle"></h3>
     <p id="brandModalMsg"></p>
     <div id="brandModalActions"></div>
+  </div>
+</div>
+
+<div id="mochiModalOverlay" hidden>
+  <div id="mochiModalCard" role="dialog" aria-modal="true" aria-label="Elige tus sabores de mochi">
+    <button class="mochi-close" id="mochiClose" aria-label="Cerrar">×</button>
+    <h3>Elige tus sabores</h3>
+    <p class="mochi-sub">2 unidades por <span id="mochiPrice"></span> — combina como quieras</p>
+    <div class="mochi-flavors" id="mochiFlavors"></div>
+    <div class="mochi-total">Seleccionadas: <span id="mochiCount">0</span> / 2</div>
+    <button id="mochiConfirm" class="wa-btn" disabled>Añadir al carrito</button>
   </div>
 </div>
 <button id="backToTop" aria-label="Volver arriba">↑</button>
@@ -1652,6 +1695,7 @@ const keyOf = (name,label) => name + (label ? " (" + label + ")" : "");
 document.addEventListener("click", e => {
   const b = e.target.closest(".add-btn");
   if(!b) return;
+  if(b.dataset.name === "Mochi"){ openMochiPicker(b.dataset.price); return; }
   const key = keyOf(b.dataset.name, b.dataset.label);
   const item = cart.find(i => i.key === key);
   if(item) item.qty++;
@@ -1659,6 +1703,74 @@ document.addEventListener("click", e => {
   renderCart();
   b.classList.add("pop");
   setTimeout(() => b.classList.remove("pop"), 300);
+});
+
+/* ---- Selector de sabores de Mochi (2 unidades, combinables) ---- */
+const MOCHI_FLAVORS = ["Fruta de la pasión", "Tarta de queso", "Mango"];
+const MOCHI_PACK_SIZE = 2;
+let mochiState = {};
+let mochiPackPrice = 0;
+
+function mochiTotal(){
+  return Object.values(mochiState).reduce((s,n) => s + n, 0);
+}
+function renderMochiFlavors(){
+  const total = mochiTotal();
+  document.getElementById("mochiFlavors").innerHTML = MOCHI_FLAVORS.map(f => {
+    const n = mochiState[f] || 0;
+    return `
+    <div class="mochi-flavor-row">
+      <span class="mf-name">${f}</span>
+      <div class="qty">
+        <button class="mochi-minus" data-flavor="${f}" ${n===0 ? "disabled" : ""}>−</button>
+        <span>${n}</span>
+        <button class="mochi-plus" data-flavor="${f}" ${total>=MOCHI_PACK_SIZE ? "disabled" : ""}>+</button>
+      </div>
+    </div>`;
+  }).join("");
+  document.getElementById("mochiCount").textContent = total;
+  document.getElementById("mochiConfirm").disabled = total !== MOCHI_PACK_SIZE;
+}
+function openMochiPicker(price){
+  mochiPackPrice = toNum(price);
+  mochiState = {};
+  document.getElementById("mochiPrice").textContent = toEur(mochiPackPrice);
+  renderMochiFlavors();
+  const overlay = document.getElementById("mochiModalOverlay");
+  overlay.hidden = false;
+  requestAnimationFrame(() => overlay.classList.add("show"));
+}
+function closeMochiPicker(){
+  document.getElementById("mochiModalOverlay").classList.remove("show");
+}
+document.getElementById("mochiClose").addEventListener("click", closeMochiPicker);
+document.getElementById("mochiModalOverlay").addEventListener("click", e => {
+  if(e.target.id === "mochiModalOverlay") closeMochiPicker();
+});
+document.addEventListener("click", e => {
+  const plus = e.target.closest(".mochi-plus");
+  const minus = e.target.closest(".mochi-minus");
+  if(plus && !plus.disabled){
+    const f = plus.dataset.flavor;
+    if(mochiTotal() < MOCHI_PACK_SIZE) mochiState[f] = (mochiState[f]||0) + 1;
+    renderMochiFlavors();
+  }
+  if(minus && !minus.disabled){
+    const f = minus.dataset.flavor;
+    mochiState[f] = Math.max(0, (mochiState[f]||0) - 1);
+    renderMochiFlavors();
+  }
+});
+document.getElementById("mochiConfirm").addEventListener("click", () => {
+  const parts = MOCHI_FLAVORS.filter(f => mochiState[f] > 0).map(f => `${mochiState[f]}x ${f}`);
+  const detail = parts.join(", ");
+  const key = "Mochi";
+  const item = cart.find(i => i.key === key && i.detail === detail);
+  if(item) item.qty++;
+  else cart.push({ key, price: mochiPackPrice, qty: 1, detail });
+  renderCart();
+  closeMochiPicker();
+  showToast("Mochi añadido 🍡");
 });
 
 function refreshAddButtons(){
