@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#2932D9">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232932D9'/%3E%3Ctext x='32' y='44' font-family='Arial,sans-serif' font-weight='900' font-size='34' fill='white' text-anchor='middle'%3EY%3C/text%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.json">
@@ -733,7 +733,15 @@ footer{
 }
 .qty span{min-width:20px;text-align:center;font-weight:800}
 
-.cart-fields{padding:0 22px}
+.cart-fields{
+  padding:0 22px;flex:1;min-height:0;overflow-y:auto;
+  overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;
+}
+/* flex:1 + min-height:0 + overflow-y:auto de arriba son a propósito: sin
+   esto, el paso 4 (datos de entrega) no tenía zona con scroll propia, así
+   que al desplegar el selector de localidad o los avisos de reparto la
+   ventana del carrito crecía más que la pantalla y el botón verde de
+   enviar quedaba fuera de la vista, sin forma de deslizar hasta él. */
 .cart-fields input,.cart-fields select,.cart-fields textarea{
   width:100%;margin-top:10px;padding:13px 15px;border:2px solid var(--line);
   border-radius:13px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--blue);
