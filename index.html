@@ -15,6 +15,15 @@
 <meta property="og:title" content="YOKAI · Sushi y Poke en Onda">
 <meta property="og:description" content="Cocina japonesa con salsas de obrador hechas en casa. Pide por WhatsApp.">
 <meta property="og:type" content="restaurant">
+<meta property="og:url" content="https://yokai.es/">
+<meta property="og:image" content="https://yokai.es/img/logo-cuadrado-azul.png">
+<meta property="og:image:width" content="410">
+<meta property="og:image:height" content="300">
+<meta property="og:image:type" content="image/png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="YOKAI · Sushi y Poke en Onda">
+<meta name="twitter:description" content="Cocina japonesa con salsas de obrador hechas en casa. Pide por WhatsApp.">
+<meta name="twitter:image" content="https://yokai.es/img/logo-cuadrado-azul.png">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -386,6 +395,7 @@ section,main,.section-head{position:relative;z-index:2}
   opacity:.55;border-style:dashed;color:var(--dim);cursor:not-allowed;
   text-decoration:line-through;
 }
+.condiments-picker{display:flex;flex-wrap:wrap;gap:10px}
 .chip.agotado:hover{border-color:var(--line)}
 .agotado-tag{
   display:inline-block;text-decoration:none;font-size:10px;font-weight:800;
@@ -1056,21 +1066,38 @@ footer{
     </div>
   </div>
 
-  <!-- PASO 3: confirmar pedido -->
+  <!-- PASO 3: soja, wasabi y jengibre -->
   <div class="checkout-step" id="step3" hidden>
+    <div class="step-body">
+      <p class="step-lead">¿Quieres soja, wasabi y jengibre?</p>
+      <div class="mode-hint">Por defecto no los incluimos, para no desperdiciar sobres — actívalos si los quieres.</div>
+      <div class="condiments-picker" id="condimentsPicker" style="margin-top:18px">
+        <button type="button" class="chip" data-cond="soja">🍶 Soja</button>
+        <button type="button" class="chip" data-cond="wasabi">🟢 Wasabi</button>
+        <button type="button" class="chip" data-cond="jengibre">🧊 Jengibre</button>
+      </div>
+    </div>
+    <div class="cart-foot two-btn">
+      <button class="btn-back" id="backTo2">← Volver</button>
+      <button class="wa-btn" id="goStep4">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- PASO 4: confirmar pedido -->
+  <div class="checkout-step" id="step4" hidden>
     <div class="step-body">
       <p class="step-lead">Confirma tu pedido</p>
       <div id="confirmSummary" class="confirm-summary"></div>
       <div class="cart-total" style="margin-top:16px">Total <span class="amt" id="cartTotal2">0,00€</span></div>
     </div>
     <div class="cart-foot two-btn">
-      <button class="btn-back" id="backTo2">← Volver</button>
-      <button class="wa-btn" id="goStep4">Confirmar pedido</button>
+      <button class="btn-back" id="backTo3">← Volver</button>
+      <button class="wa-btn" id="goStep5">Confirmar pedido</button>
     </div>
   </div>
 
-  <!-- PASO 4: datos y envío -->
-  <div class="checkout-step" id="step4" hidden>
+  <!-- PASO 5: datos y envío -->
+  <div class="checkout-step" id="step5" hidden>
     <div class="cart-fields">
       <div class="name-row">
         <input type="text" id="fName" placeholder="Nombre*">
@@ -1092,7 +1119,7 @@ footer{
       <textarea id="fNotes" placeholder="Notas: sin cebolla, alergias, portal, timbre..."></textarea>
     </div>
     <div class="cart-foot two-btn">
-      <button class="btn-back" id="backTo3">← Volver</button>
+      <button class="btn-back" id="backTo4">← Volver</button>
       <div class="cart-total">Total <span class="amt" id="cartTotal3">0,00€</span></div>
     </div>
     <div class="cart-foot">
@@ -1928,6 +1955,9 @@ function showBrandModal({ char = "img/char-chopstick.png", title = "", msg = "",
 
 /* ---- Carrito → WhatsApp ---- */
 let cart = [];
+/* Por defecto ninguno va marcado (para evitar desperdicio de sobres) —
+   el cliente activa los que quiera en el paso "Soja, wasabi, jengibre". */
+let condiments = { soja: false, wasabi: false, jengibre: false };
 try{ cart = JSON.parse(localStorage.getItem("yokai_cart") || "[]"); }catch(e){}
 const fab = document.getElementById("cartFab");
 const drawer = document.getElementById("cartDrawer");
@@ -2246,11 +2276,12 @@ addEventListener("resize", updateScrollHint);
 const STEP_TITLES = {
   1: "TU PEDIDO",
   2: "¿ALGO DE BEBER?",
-  3: "CONFIRMA",
-  4: "TUS DATOS"
+  3: "SOJA, WASABI, JENGIBRE",
+  4: "CONFIRMA",
+  5: "TUS DATOS"
 };
 function showStep(n){
-  [1,2,3,4].forEach(i => {
+  [1,2,3,4,5].forEach(i => {
     document.getElementById("step" + i).hidden = (i !== n);
   });
   document.getElementById("cartStepTitle").innerHTML =
@@ -2324,23 +2355,44 @@ document.addEventListener("click", e => {
   renderDrinksUpsell();
 });
 
+function renderCondimentsPicker(){
+  document.querySelectorAll("#condimentsPicker .chip").forEach(b => {
+    b.classList.toggle("sel", !!condiments[b.dataset.cond]);
+  });
+}
+document.getElementById("condimentsPicker").addEventListener("click", e => {
+  const b = e.target.closest(".chip[data-cond]");
+  if(!b) return;
+  const key = b.dataset.cond;
+  condiments[key] = !condiments[key];
+  b.classList.toggle("sel", condiments[key]);
+});
+
 document.getElementById("goStep2").addEventListener("click", () => {
   renderDrinksUpsell();
   showStep(2);
 });
 document.getElementById("backTo1").addEventListener("click", () => showStep(1));
 document.getElementById("goStep3").addEventListener("click", () => {
-  renderConfirmSummary();
+  renderCondimentsPicker();
   showStep(3);
 });
 document.getElementById("backTo2").addEventListener("click", () => {
   renderDrinksUpsell();
   showStep(2);
 });
-document.getElementById("goStep4").addEventListener("click", () => showStep(4));
-document.getElementById("backTo3").addEventListener("click", () => {
+document.getElementById("goStep4").addEventListener("click", () => {
   renderConfirmSummary();
+  showStep(4);
+});
+document.getElementById("backTo3").addEventListener("click", () => {
+  renderCondimentsPicker();
   showStep(3);
+});
+document.getElementById("goStep5").addEventListener("click", () => showStep(5));
+document.getElementById("backTo4").addEventListener("click", () => {
+  renderConfirmSummary();
+  showStep(4);
 });
 
 function openCart(){
@@ -2445,6 +2497,10 @@ waSend.addEventListener("click", async () => {
   });
   msg += `\n*Total: ${toEur(total)}*\n`;
 
+  const condLabels = { soja: "Soja", wasabi: "Wasabi", jengibre: "Jengibre" };
+  const selectedCond = Object.keys(condiments).filter(k => condiments[k]).map(k => condLabels[k]);
+  msg += `Soja/wasabi/jengibre: ${selectedCond.length ? selectedCond.join(", ") : "No, gracias"}\n`;
+
   msg += `\n*ENTREGA*\n`;
   msg += `Modo: ${mode}\n`;
   if(zone && zone.pooled) msg += `Localidad: ${zone.name} — reparto conjunto (mín. ${toEur(zone.minOrder)} entre vecinos)\n`;
@@ -2472,6 +2528,8 @@ waSend.addEventListener("click", async () => {
     autoCloseMs: 3200
   });
   cart = [];
+  condiments = { soja: false, wasabi: false, jengibre: false };
+  renderCondimentsPicker();
   renderCart();
   setTimeout(closeCart, 900);
 });
