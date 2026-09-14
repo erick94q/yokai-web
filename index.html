@@ -382,6 +382,16 @@ section,main,.section-head{position:relative;z-index:2}
 }
 .chip:hover{border-color:var(--blue)}
 .chip.sel{background:var(--blue);color:#fff;border-color:var(--blue)}
+.chip.agotado{
+  opacity:.55;border-style:dashed;color:var(--dim);cursor:not-allowed;
+  text-decoration:line-through;
+}
+.chip.agotado:hover{border-color:var(--line)}
+.agotado-tag{
+  display:inline-block;text-decoration:none;font-size:10px;font-weight:800;
+  letter-spacing:.03em;color:#b23a3a;background:#fbe4e4;border-radius:999px;
+  padding:2px 7px;margin-left:4px;vertical-align:middle;
+}
 .poke-foot{
   margin-top:26px;padding-top:18px;border-top:2px solid var(--line);
   display:flex;align-items:center;gap:16px;flex-wrap:wrap;
@@ -613,6 +623,8 @@ footer{
   display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);
   border-radius:10px;padding:5px 9px;
 }
+.gyoza-flavor-row.agotado{opacity:.6;border-style:dashed}
+.gyoza-flavor-row.agotado .mf-name{text-decoration:line-through;color:var(--dim)}
 .gyoza-flavor-row .mf-name{flex:1;font-weight:800;font-size:12px;line-height:1.15}
 .gyoza-flavor-row .qty{gap:6px}
 .gyoza-flavor-row .qty button{width:22px;height:22px;border-radius:6px;font-size:13px}
@@ -1103,6 +1115,13 @@ const REWARD_EVERY = 10;             // cada cuántos pedidos se desbloquea el p
 const REWARD_MESSAGE = "un plato de cortesía a elegir en este pedido";
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSf8GETYkg-cqI5sIqx6AfRWKqDHFwgrJ9kS1ZwetPFIQX4WssP5hhQjP_spScNMEFL_h8GIqQQ-Oi6/pub?gid=836486597&single=true&output=csv";
 
+/* POKE_SHEET_URL: enlace CSV de la pestaña "Poke y Gyozas" de tu hoja de
+   Google (una pestaña nueva, separada de la carta). Desde ahí puedes
+   editar los ingredientes del poke y las variantes de gyoza, añadir
+   nuevos o marcarlos como agotados, sin tocar el código. Si se deja
+   vacío, se usan los valores de ejemplo de más abajo (DEFAULT_POKE). */
+const POKE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSf8GETYkg-cqI5sIqx6AfRWKqDHFwgrJ9kS1ZwetPFIQX4WssP5hhQjP_spScNMEFL_h8GIqQQ-Oi6/pub?gid=47641986&single=true&output=csv";
+
 const MARQUEE_ITEMS = [
   "YOKAI", "良い寿司、良い時間。", "HECHO AL MOMENTO",
   "EL JAPÓN URBANO", "HECHO EN ONDA"
@@ -1244,8 +1263,10 @@ const DEFAULT_DRINKS = [
   { emoji:"🍵", n:"Té verde", p:"2,50€" }
 ];
 
-/* ---- Poke personalizable ---- */
-const POKE = {
+/* ---- Poke personalizable ----
+   Valores de ejemplo, usados solo si POKE_SHEET_URL está vacío o falla
+   la carga de esa hoja. */
+const DEFAULT_POKE = {
   price: { "Mediano": 10.99, "Grande": 13.99 },
   bases: ["Arroz sushi", "Quinoa"],
   proteins: ["Salmón", "Salmón marinado", "Atún", "Atún marinado", "Pollo a la plancha"],
@@ -1255,6 +1276,50 @@ const POKE = {
   dry: ["Sésamo", "Cebolla frita", "Anacardos", "Nueces"],
   sauces: ["Mayo sésamo", "Mayo picante", "Mayo wasabi", "Mayo yuzu", "Miso", "Sin salsa"]
 };
+/* Variantes de gyoza de ejemplo, mismo criterio que arriba. */
+const DEFAULT_GYOZA_VARIANTS = [
+  "Langostino al vapor", "Pollo al vapor", "Vegetales al vapor",
+  "Langostino frita", "Pollo frita", "Vegetales frita"
+];
+
+/* Convierte una lista de nombres sueltos (los valores de ejemplo) al
+   mismo formato {name, available} que llega de la hoja de Google. */
+function toItems(arr){ return (arr || []).map(v => typeof v === "string" ? { name: v, available: true } : v); }
+
+/* Combina lo leído de POKE_SHEET_URL con los valores de ejemplo: si un
+   grupo viene vacío de la hoja (o no hay hoja), se usa el de ejemplo. */
+function normalizePokeData(sheet){
+  const s = sheet || {};
+  const bases = (s.bases && s.bases.length) ? s.bases : toItems(DEFAULT_POKE.bases);
+  const proteins = (s.proteins && s.proteins.length) ? s.proteins : toItems(DEFAULT_POKE.proteins);
+  const dry = (s.dry && s.dry.length) ? s.dry : toItems(DEFAULT_POKE.dry);
+  const sauces = (s.sauces && s.sauces.length) ? s.sauces : toItems(DEFAULT_POKE.sauces);
+  const toppings = (s.toppings && s.toppings.length)
+    ? s.toppings.map(t => {
+        // El "+" lo añadimos aquí siempre nosotros: si se escribe a mano en
+        // la celda, Google Sheets lo confunde con el inicio de una fórmula
+        // y da #ERROR!. En la hoja basta con poner el precio, ej. "1€".
+        const clean = (t.price || "").replace(/^\+/, "").trim();
+        return { name: t.name + (clean ? " +" + clean : ""), available: t.available };
+      })
+    : toItems(DEFAULT_POKE.toppings);
+  const sizes = (s.sizes && s.sizes.length) ? s.sizes : Object.keys(DEFAULT_POKE.price).map(n => ({ name: n, available: true }));
+  const price = (s.sizes && s.sizes.length)
+    ? Object.fromEntries(s.sizes.map(sz => [sz.name, toNum(sz.price)]))
+    : { ...DEFAULT_POKE.price };
+  return { price, bases, sizes, proteins, toppings, dry, sauces };
+}
+
+let POKE = normalizePokeData(null);
+let GYOZA_VARIANTS = toItems(DEFAULT_GYOZA_VARIANTS);
+
+/* Se llama tras leer (o intentar leer) POKE_SHEET_URL, para aplicar los
+   datos reales al configurador de poke y a la lista de gyozas. */
+function applyPokeSheetData(sheet){
+  POKE = normalizePokeData(sheet);
+  GYOZA_VARIANTS = (sheet && sheet.gyozas && sheet.gyozas.length) ? sheet.gyozas : toItems(DEFAULT_GYOZA_VARIANTS);
+  if(typeof pokeConfig !== "undefined") pokeConfig.reload();
+}
 
 /* ============================================================
    MOTOR DE LA WEB (no hace falta tocar nada de aquí para abajo)
@@ -1365,6 +1430,32 @@ function buildFromSheet(rows){
     }
   }
   return { sections, sauces, drinks, favorites, pokeMedia };
+}
+
+/* ---- Lector de la hoja "Poke y Gyozas" ----
+   Columnas esperadas: Grupo | Nombre | Precio | Disponible
+   - Grupo: Base / Tamaño / Proteína / Topping / Topping seco / Salsa / Gyoza
+   - Precio: en Tamaño es el precio de ese tamaño de poke (ej. 10,99€);
+     en Topping es el extra si lo tiene (ej. +1€); en Gyoza no se usa
+     (el precio del pack de gyozas se sigue tomando de la carta).
+   - Disponible: Sí / No — "No" lo marca como agotado (se ve tachado). */
+function buildPokeFromSheet(rows){
+  const head = rows[0].map(h => slug(h));
+  const idx = name => head.indexOf(name);
+  const col = (r, name) => { const i = idx(name); return i >= 0 ? (r[i] || "").trim() : ""; };
+  const GROUP_KEY = {
+    "base": "bases", "tamano": "sizes", "proteina": "proteins",
+    "topping": "toppings", "topping-seco": "dry", "salsa": "sauces", "gyoza": "gyozas"
+  };
+  const out = { bases: [], sizes: [], proteins: [], toppings: [], dry: [], sauces: [], gyozas: [] };
+  for(const r of rows.slice(1)){
+    const key = GROUP_KEY[slug(col(r, "grupo"))];
+    const nombre = col(r, "nombre");
+    if(!key || !nombre) continue;
+    const disp = col(r, "disponible").toLowerCase();
+    out[key].push({ name: nombre, price: col(r, "precio"), available: !(disp === "no" || disp === "0") });
+  }
+  return out;
 }
 
 /* ---- Render ---- */
@@ -1554,20 +1645,37 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
 
 
 /* ---- Configurador de Poke ---- */
-(function(){
-  const state = { base:"Arroz sushi", size:"Mediano", protein:null, toppings:[], dry:[], sauce:null };
-  const groups = {
-    base: POKE.bases, size: Object.keys(POKE.price), protein: POKE.proteins,
-    toppings: POKE.toppings, dry: POKE.dry, sauce: POKE.sauces
-  };
-  document.querySelectorAll("#poke .chips").forEach(box => {
-    const g = box.dataset.group;
-    box.innerHTML = groups[g].map(v => `<button class="chip" data-v="${v}">${v}</button>`).join("");
-  });
+const pokeConfig = (function(){
+  const state = { base:null, size:null, protein:null, toppings:[], dry:[], sauce:null };
 
-  function extra(t){ return t.includes("+1€") ? 1 : 0; }
+  function itemsOf(g){
+    return {
+      base: POKE.bases, size: POKE.sizes, protein: POKE.proteins,
+      toppings: POKE.toppings, dry: POKE.dry, sauce: POKE.sauces
+    }[g];
+  }
+  function firstAvailable(g){
+    const items = itemsOf(g) || [];
+    const found = items.find(it => it.available !== false);
+    return found ? found.name : (items[0] ? items[0].name : null);
+  }
+
+  function renderChips(){
+    document.querySelectorAll("#poke .chips").forEach(box => {
+      const g = box.dataset.group;
+      box.innerHTML = itemsOf(g).map(it => {
+        const off = it.available === false;
+        return `<button class="chip${off ? " agotado" : ""}" data-v="${it.name}"${off ? " disabled" : ""}>${it.name}${off ? ' <span class="agotado-tag">Agotado</span>' : ""}</button>`;
+      }).join("");
+    });
+  }
+
+  function extra(t){
+    const m = t.match(/\+([\d.,]+)\s*€/);
+    return m ? toNum(m[0]) : 0;
+  }
   function total(){
-    return POKE.price[state.size] + state.toppings.reduce((s,t)=> s + extra(t), 0);
+    return (POKE.price[state.size] || 0) + state.toppings.reduce((s,t)=> s + extra(t), 0);
   }
   function fmt(n){ return n.toFixed(2).replace(".",",") + "€"; }
 
@@ -1585,6 +1693,19 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
     const btn = document.getElementById("pokeAdd");
     btn.disabled = !ok;
     btn.querySelector(".txt").textContent = ok ? "Añadir mi poke" : "Elige proteína y salsa";
+  }
+
+  function reload(){
+    /* Si la opción elegida ya no existe o quedó agotada, se recoloca
+       en la primera disponible (o se deja sin elegir si aplica). */
+    state.base = firstAvailable("base");
+    state.size = firstAvailable("size");
+    if(state.protein && !itemsOf("protein").some(it => it.name === state.protein && it.available !== false)) state.protein = null;
+    if(state.sauce && !itemsOf("sauce").some(it => it.name === state.sauce && it.available !== false)) state.sauce = null;
+    state.toppings = state.toppings.filter(v => itemsOf("toppings").some(it => it.name === v && it.available !== false));
+    state.dry = state.dry.filter(v => itemsOf("dry").some(it => it.name === v && it.available !== false));
+    renderChips();
+    refresh();
   }
 
   document.querySelector("#poke").addEventListener("click", e => {
@@ -1609,7 +1730,7 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
       const detail = [
         "Base: " + state.base,
         "Proteína: " + state.protein,
-        state.toppings.length ? "Toppings: " + state.toppings.map(t=>t.replace(" +1€","")).join(", ") : "",
+        state.toppings.length ? "Toppings: " + state.toppings.map(t=>t.replace(/\s*\+[\d.,]+\s*€/,"")).join(", ") : "",
         state.dry.length ? "Secos: " + state.dry.join(", ") : "",
         "Salsa: " + state.sauce
       ].filter(Boolean).join(" · ");
@@ -1623,7 +1744,9 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
       openCart();
     }
   });
-  refresh();
+
+  reload();
+  return { reload };
 })();
 
 /* ---- Info de pedido: mínimo, tiempo, zona ---- */
@@ -1800,7 +1923,7 @@ const keyOf = (name,label) => name + (label ? " (" + label + ")" : "");
 
 document.addEventListener("click", e => {
   const b = e.target.closest(".add-btn");
-  if(!b) return;
+  if(!b || !b.dataset.name) return; // pokeAdd, por ejemplo, comparte estilo pero no es un botón de carta
   if(b.dataset.name === "Mochi"){ openMochiPicker(b.dataset.price); return; }
   if(b.dataset.name === "Gyozas"){ openGyozaPicker(b.dataset.price); return; }
   const key = keyOf(b.dataset.name, b.dataset.label);
@@ -1881,10 +2004,6 @@ document.getElementById("mochiConfirm").addEventListener("click", () => {
 });
 
 /* ---- Selector de variantes de Gyoza (packs de 4 uds, no combinables entre sí) ---- */
-const GYOZA_VARIANTS = [
-  "Langostino al vapor", "Pollo al vapor", "Vegetales al vapor",
-  "Langostino frita", "Pollo frita", "Vegetales frita"
-];
 const GYOZA_PACK_SIZE = 4;
 let gyozaState = {};
 let gyozaPackPrice = 0;
@@ -1894,7 +2013,14 @@ function gyozaTotal(){
 }
 function renderGyozaFlavors(){
   const total = gyozaTotal();
-  document.getElementById("gyozaFlavors").innerHTML = GYOZA_VARIANTS.map(f => {
+  document.getElementById("gyozaFlavors").innerHTML = GYOZA_VARIANTS.map(v => {
+    const f = v.name;
+    if(v.available === false){
+      return `
+      <div class="gyoza-flavor-row agotado">
+        <span class="mf-name">${f} <span class="agotado-tag">Agotado</span></span>
+      </div>`;
+    }
     const n = gyozaState[f] || 0;
     return `
     <div class="gyoza-flavor-row">
@@ -1940,7 +2066,8 @@ document.addEventListener("click", e => {
   }
 });
 document.getElementById("gyozaConfirm").addEventListener("click", () => {
-  GYOZA_VARIANTS.filter(f => gyozaState[f] > 0).forEach(f => {
+  GYOZA_VARIANTS.filter(v => v.available !== false && gyozaState[v.name] > 0).forEach(v => {
+    const f = v.name;
     const key = keyOf("Gyozas", f);
     const item = cart.find(i => i.key === key);
     if(item) item.qty += gyozaState[f];
@@ -2396,6 +2523,19 @@ if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").catch(() => {});
   });
 }
+
+/* ---- Carga: opciones de Poke y variantes de Gyoza (hoja aparte, ver POKE_SHEET_URL) ---- */
+(async function(){
+  let sheet = null;
+  if(POKE_SHEET_URL){
+    try{
+      const res = await fetch(POKE_SHEET_URL + (POKE_SHEET_URL.includes("?") ? "&" : "?") + "t=" + Date.now());
+      if(!res.ok) throw new Error(res.status);
+      sheet = buildPokeFromSheet(parseCSV(await res.text()));
+    }catch(err){ console.warn("No se pudo leer la hoja de poke/gyozas, usando valores locales:", err); }
+  }
+  applyPokeSheetData(sheet);
+})();
 </script>
 </body>
 </html>
