@@ -691,10 +691,14 @@ footer{
   min-width:25px;height:25px;display:flex;align-items:center;justify-content:center;
   font-family:'DM Sans',sans-serif;font-weight:800;font-size:13px;padding:0 6px;
 }
-#cartOverlay{position:fixed;inset:0;background:rgba(41,50,217,.35);z-index:70;display:none}
+#cartOverlay{position:fixed;top:0;left:0;right:0;height:100vh;height:100dvh;background:rgba(41,50,217,.35);z-index:70;display:none}
 #cartOverlay.open{display:block}
 #cartDrawer{
-  position:fixed;top:0;right:0;bottom:0;width:min(430px,100%);z-index:80;
+  position:fixed;top:0;right:0;width:min(430px,100%);z-index:80;
+  height:100vh;height:100dvh; /* dvh en vez de bottom:0: en móvil, top:0+bottom:0 mide el
+    viewport "grande" (con la barra de direcciones oculta), así que cuando la barra está
+    visible el cajón queda más alto que lo que realmente se ve y el botón de enviar se
+    esconde detrás de ella. 100dvh sigue el alto visible de verdad en cada momento. */
   background:#fff;color:var(--blue);border-left:2.5px solid var(--blue);
   transform:translateX(105%);transition:transform .28s ease;
   display:flex;flex-direction:column;overscroll-behavior:contain;
