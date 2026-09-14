@@ -584,6 +584,13 @@ footer{
   position:absolute;top:14px;right:14px;background:none;border:none;
   font-size:22px;color:var(--dim);cursor:pointer;line-height:1;padding:4px;
 }
+#gyozaClose{
+  top:10px;right:10px;font-size:20px;font-weight:800;color:#fff;
+  background:rgba(41,50,217,.72);border-radius:50%;
+  width:32px;height:32px;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.25);
+}
 .mochi-flavors{display:flex;flex-direction:column;gap:10px;text-align:left}
 .mochi-flavor-row{
   display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);
@@ -729,9 +736,12 @@ footer{
 .cart-fields{padding:0 22px}
 .cart-fields input,.cart-fields select,.cart-fields textarea{
   width:100%;margin-top:10px;padding:13px 15px;border:2px solid var(--line);
-  border-radius:13px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--blue);
+  border-radius:13px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--blue);
   background:#fff;font-weight:600;
 }
+/* font-size:16px de arriba es a propósito: por debajo de 16px, Safari en
+   iPhone hace zoom automático al tocar el campo para escribir, lo que se
+   siente como si la ventana del carrito "saltara" o dejara de estar fija. */
 .cart-fields ::placeholder{color:var(--dim)}
 .name-row{display:flex;gap:10px;margin-top:10px}
 .name-row input{margin-top:0;flex:1;min-width:0}
@@ -856,6 +866,7 @@ footer{
         <p>Monta tu pedido aquí mismo y envíanoslo por WhatsApp. Recogida en el local o entrega a domicilio en Onda.</p>
         <div class="order-info-row" id="orderInfoRow"></div>
         <p class="order-note">🍣 Nuestro sushi se prepara al momento, no antes — en días de mucha demanda, el tiempo total puede alargarse un poco, ya que se suma la preparación y el reparto. ¡Gracias por la paciencia!</p>
+        <p class="order-note">🏘️ ¿Vives en l'Alcora, Betxí, Fanzara, Ribesalbes, Sueras o Tales? Repartimos allí por pedido conjunto: el importe mínimo de tu pueblo se cuenta <b>sumando lo que pidáis entre varios vecinos</b>, no por pedido individual. Coordinaos y avisadnos por WhatsApp para organizar el reparto.</p>
       </div>
       <div class="order-char-badge">
         <img class="order-char" src="img/char-nigiri.png" alt="Personaje YOKAI celebrando con palillos">
@@ -1093,20 +1104,21 @@ const ESTIMATED_TIME = "35-45 min";
 const DELIVERY_ZONE = "Onda y alrededores";
 
 /* Zonas de reparto a domicilio.
-   - Onda: reparto diario (mismo estándar de tiempo de toda la web).
-   - Los demás pueblos: reparto solo el día y horario indicado, para
-     agrupar rutas. Ajusta día, franja horaria y antelación mínima
-     a lo que decidáis. "day" usa el estándar JS: domingo=0 ... sábado=6. */
+   - Onda: reparto diario, sin pedido mínimo por pueblo.
+   - Los demás pueblos ("pooled: true"): reparto por pedido conjunto —
+     no hay día fijo. El importe mínimo se cuenta SUMANDO lo que pidan
+     varios vecinos del mismo pueblo, no por pedido individual. Por eso
+     el checkout no bloquea estos pedidos aunque uno solo no llegue al
+     mínimo: se coordina por WhatsApp entre vecinos. */
 const DELIVERY_ZONES = [
-  { name: "Onda",         km: 0,  schedule: null, minOrder: 0 },
-  { name: "Tales",        km: 8,  day: 3, dayLabel: "miércoles", time: "19:00–21:00", minOrder: 35 },
-  { name: "Ribesalbes",   km: 9,  day: 4, dayLabel: "jueves",    time: "19:00–21:00", minOrder: 35 },
-  { name: "l'Alcora",     km: 11, day: 5, dayLabel: "viernes",   time: "19:00–21:00", minOrder: 35 },
-  { name: "Fanzara",      km: 14, day: 2, dayLabel: "martes",    time: "19:00–21:00", minOrder: 35 },
-  { name: "Artana",       km: 14, day: 6, dayLabel: "sábado",    time: "13:00–15:00", minOrder: 35 },
-  { name: "Eslida",       km: 16, day: 0, dayLabel: "domingo",   time: "13:00–15:00", minOrder: 35 }
+  { name: "Onda",         pooled: false, minOrder: 0 },
+  { name: "Tales",        pooled: true,  minOrder: 50 },
+  { name: "Ribesalbes",   pooled: true,  minOrder: 50 },
+  { name: "l'Alcora",     pooled: true,  minOrder: 100 },
+  { name: "Betxí",        pooled: true,  minOrder: 75 },
+  { name: "Fanzara",      pooled: true,  minOrder: 60 },
+  { name: "Sueras",       pooled: true,  minOrder: 60 }
 ];
-const ADVANCE_NOTICE_HOURS = 24; // antelación mínima recomendada para pueblos con reparto programado
 
 /* Club YOKAI: fidelidad por teléfono, guardada en tu Google Sheet.
    Pega aquí la URL que te da Apps Script al publicar (ver instrucciones). */
@@ -1770,7 +1782,7 @@ const pokeConfig = (function(){
   DELIVERY_ZONES.forEach(z => {
     const opt = document.createElement("option");
     opt.value = z.name;
-    opt.textContent = z.schedule === null ? z.name : `${z.name} (${z.km} km)`;
+    opt.textContent = z.pooled ? `${z.name} (pedido conjunto)` : z.name;
     select.appendChild(opt);
   });
 
@@ -1788,14 +1800,13 @@ const pokeConfig = (function(){
       result.innerHTML = `De momento no repartimos a domicilio en tu localidad, pero puedes recoger tu pedido en el local 🙂`;
       return;
     }
-    if(zone.schedule === null){
+    if(!zone.pooled){
       result.className = "coverage-result ok";
       result.innerHTML = `✓ ¡Repartimos en ${zone.name} cada día! Tiempo estimado de entrega: <b>${ESTIMATED_TIME}</b>.` +
         (zone.minOrder > 0 ? `<br>Pedido mínimo: <b>${toEur(zone.minOrder)}</b>.` : "");
     } else {
       result.className = "coverage-result ok";
-      result.innerHTML = `📅 Repartimos en <b>${zone.name}</b> los <b>${zone.dayLabel}</b>, de <b>${zone.time}</b>.<br>Haz tu pedido con al menos ${ADVANCE_NOTICE_HOURS}h de antelación para asegurar el reparto ese día.` +
-        (zone.minOrder > 0 ? `<br>Pedido mínimo: <b>${toEur(zone.minOrder)}</b>.` : "");
+      result.innerHTML = `🏘️ Repartimos en <b>${zone.name}</b> por pedido conjunto — no hay un día fijo.<br>Importe mínimo <b>entre todos los vecinos que pidáis juntos</b>: <b>${toEur(zone.minOrder)}</b>.<br>Coordinaos y avisadnos por WhatsApp para organizar el reparto.`;
     }
   }
   btn.addEventListener("click", check);
@@ -2156,7 +2167,7 @@ function renderCart(){
   DELIVERY_ZONES.forEach(z => {
     const opt = document.createElement("option");
     opt.value = z.name;
-    opt.textContent = z.schedule === null ? `${z.name} (reparto diario)` : `${z.name} — ${z.dayLabel}`;
+    opt.textContent = z.pooled ? `${z.name} — pedido conjunto (mín. ${toEur(z.minOrder)})` : `${z.name} (reparto diario)`;
     zoneSelect.appendChild(opt);
   });
 })();
@@ -2179,9 +2190,9 @@ function updateZoneHints(){
     th.hidden = true;
   } else {
     th.hidden = false;
-    th.innerHTML = zone.schedule === null
+    th.innerHTML = !zone.pooled
       ? `⏱ Tiempo estimado de entrega: <b>${ESTIMATED_TIME}</b>. Se prepara al momento, así que en horas punta puede tardar algo más.`
-      : `📅 Reparto en <b>${zone.name}</b> los <b>${zone.dayLabel}</b>, de <b>${zone.time}</b>. Pide con ${ADVANCE_NOTICE_HOURS}h de antelación para asegurar tu entrega ese día.`;
+      : `🏘️ Reparto en <b>${zone.name}</b> por pedido conjunto: el mínimo (${toEur(zone.minOrder)}) se cuenta sumando lo que pidáis entre varios vecinos, no hace falta que tu pedido solo lo alcance. Coordinaos y avisadnos por WhatsApp.`;
   }
   updateMinOrderNote();
 }
@@ -2198,7 +2209,11 @@ function updateMinOrderNote(){
   const short = minOrder - total;
   const shouldShow = mode === "Entrega a domicilio" && zone && minOrder > 0 && short > 0.001;
   note.hidden = !shouldShow;
-  if(shouldShow) note.textContent = `Para entrega a ${zone.name}, el pedido mínimo es ${minOrder.toFixed(2).replace(".",",")}€ — te faltan ${short.toFixed(2).replace(".",",")}€.`;
+  if(shouldShow){
+    note.textContent = zone.pooled
+      ? `Para reparto en ${zone.name}, el mínimo conjunto es ${minOrder.toFixed(2).replace(".",",")}€ — sumando lo que pidáis entre varios vecinos, no hace falta que tu pedido solo lo alcance.`
+      : `Para entrega a ${zone.name}, el pedido mínimo es ${minOrder.toFixed(2).replace(".",",")}€ — te faltan ${short.toFixed(2).replace(".",",")}€.`;
+  }
 }
 
 let scrollHintTicking = false;
@@ -2372,10 +2387,12 @@ waSend.addEventListener("click", async () => {
     showToast("Escribe la dirección de entrega");
     return;
   }
-  if(mode === "Entrega a domicilio" && zone && total < zone.minOrder){
+  if(mode === "Entrega a domicilio" && zone && !zone.pooled && total < zone.minOrder){
     showToast(`Pedido mínimo para ${zone.name}: ${toEur(zone.minOrder)}`);
     return;
   }
+  /* Los pueblos "pooled" no bloquean aquí: su mínimo se cuenta sumando
+     varios pedidos de vecinos, no se puede validar en un pedido suelto. */
 
   /* Abrimos la pestaña ya, en el mismo gesto de tocar el botón,
      para que ningún navegador la bloquee mientras esperamos al Club YOKAI. */
@@ -2418,7 +2435,7 @@ waSend.addEventListener("click", async () => {
 
   msg += `\n*ENTREGA*\n`;
   msg += `Modo: ${mode}\n`;
-  if(zone && zone.schedule !== null) msg += `Localidad: ${zone.name} — reparto ${zone.dayLabel} ${zone.time}\n`;
+  if(zone && zone.pooled) msg += `Localidad: ${zone.name} — reparto conjunto (mín. ${toEur(zone.minOrder)} entre vecinos)\n`;
   else if(zone) msg += `Localidad: ${zone.name}\n`;
   if(address) msg += `Dirección: ${address}\n`;
 
