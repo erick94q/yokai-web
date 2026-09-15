@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="YOKAI">
 <title>YOKAI · Sushi y Poke en Onda | Pedidos a Domicilio y Recogida</title>
-<meta name="description" content="Sushi, poke bowls y cocina japonesa en Onda (Castellón). Rolls, donburi, tartar y salsas hechas en casa. Pide por WhatsApp: recogida o entrega a domicilio.">
+<meta name="description" content="Sushi, poke y cocina japonesa en Onda, Castellón. Salsas caseras de obrador, take-away y delivery. Pide por WhatsApp — recogida o entrega a domicilio en Onda y pueblos cercanos.">
 <link rel="canonical" href="https://yokai.es/">
 <meta property="og:title" content="YOKAI · Sushi y Poke en Onda">
 <meta property="og:description" content="Cocina japonesa con salsas de obrador hechas en casa. Pide por WhatsApp.">
@@ -173,9 +173,11 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
   font-weight:800;font-size:12.5px;border-radius:999px;padding:11px 14px;
   cursor:pointer;transition:.15s;font-family:'DM Sans',sans-serif;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-decoration:none;
 }
 .quick-btn:hover{border-color:var(--blue);background:var(--blue-soft)}
 .quick-btn[hidden]{display:none}
+.quick-btn.span-full{grid-column:1/-1;max-width:220px;margin:0 auto}
 .share-btn{
   background:var(--blue);border-color:var(--blue);color:#fff;
   box-shadow:0 6px 16px rgba(41,50,217,.3);
@@ -891,13 +893,14 @@ footer{
     <h1 class="sr-only">YOKAI — Sushi y cocina japonesa en Onda, Castellón | Recogida y entrega a domicilio</h1>
     <img class="wordmark-img" src="img/logo-largo-azul.png" alt="YOKAI">
     <div class="soon-badge">🎁 Club YOKAI — muy pronto: pide, acumula, gana</div>
-    <p class="sub">El <strong>Japón más urbano y auténtico</strong>, en Onda. Comida japonesa fresca, hecha al momento y pensada para tu día a día.</p>
+    <p class="sub">El <strong>Japón más urbano y auténtico</strong>, en Onda. Comida japonesa fresca, hecha al momento y pensada para tu día a día. Pide en 2 minutos, recoge o te lo llevamos a casa.</p>
     <div class="hero-ctas">
-      <a class="btn primary" href="#carta">Ver la carta</a>
+      <a class="btn primary" href="#carta">Ver la carta y pedir</a>
       <button class="btn line" onclick="openCart()">🛒 Mi pedido</button>
     </div>
     <div class="hero-quick" id="heroQuick">
       <button class="quick-btn" id="howBtn" type="button">❓ ¿Cómo pedir?</button>
+      <a class="quick-btn" id="hoursBtn" href="#info">📍 Horario y ubicación</a>
       <button class="quick-btn" id="installBtn" hidden>📲 Instalar app</button>
       <button class="quick-btn" id="repeatBtn" hidden>🔁 Repetir mi último pedido</button>
       <button class="quick-btn share-btn" id="shareBtn">📤 ¡Comparte la carta!</button>
@@ -1095,7 +1098,6 @@ footer{
   <img class="logo-box-img" src="img/logo-cuadrado-azul.png" alt="YOKAI"><br>
   Calle Ben al Abbar 24 bajo · 12200 Onda, Castellón<br>
   <a href="tel:+34964500133">964 500 133</a> · <a href="https://www.instagram.com/yokai.onda/" target="_blank" rel="noopener">Instagram</a><br>
-  Información de alérgenos disponible en el local<br>
   hecho con ❤️ en Onda
   <div class="legal-links">
     <a href="aviso-legal.html">Aviso legal</a> ·
@@ -2706,12 +2708,23 @@ waSend.addEventListener("click", async () => {
 
 renderCart();
 
+/* ---- Accesos rápidos del hero: centrar el último botón si quedan en número impar ---- */
+function balanceHeroQuick(){
+  const row = document.getElementById("heroQuick");
+  if(!row) return;
+  const items = Array.from(row.children).filter(el => !el.hidden);
+  row.querySelectorAll(".quick-btn").forEach(el => el.classList.remove("span-full"));
+  if(items.length % 2 === 1) items[items.length - 1].classList.add("span-full");
+}
+balanceHeroQuick();
+
 /* ---- Botón de instalar la app ---- */
 let deferredInstallPrompt = null;
 addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
   deferredInstallPrompt = e;
   document.getElementById("installBtn").hidden = false;
+  balanceHeroQuick();
 });
 document.getElementById("installBtn").addEventListener("click", async () => {
   if(!deferredInstallPrompt) return;
@@ -2719,9 +2732,11 @@ document.getElementById("installBtn").addEventListener("click", async () => {
   await deferredInstallPrompt.userChoice;
   deferredInstallPrompt = null;
   document.getElementById("installBtn").hidden = true;
+  balanceHeroQuick();
 });
 addEventListener("appinstalled", () => {
   document.getElementById("installBtn").hidden = true;
+  balanceHeroQuick();
 });
 
 /* ---- Repetir pedido rápido desde el hero ---- */
@@ -2729,7 +2744,7 @@ addEventListener("appinstalled", () => {
   const btn = document.getElementById("repeatBtn");
   let lastOrder = null;
   try{ lastOrder = JSON.parse(localStorage.getItem("yokai_last_order") || "null"); }catch(e){}
-  if(lastOrder && lastOrder.length) btn.hidden = false;
+  if(lastOrder && lastOrder.length){ btn.hidden = false; balanceHeroQuick(); }
   btn.addEventListener("click", () => {
     cart = JSON.parse(JSON.stringify(lastOrder));
     renderCart();
