@@ -1734,7 +1734,7 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
     ...SECTIONS.map(s => ({ id: s.id, label: s.title })),
     ...(DRINKS.length ? [{ id: "bebidas", label: "Bebidas" }] : [])
   ];
-  tabs.splice(SECTIONS.length, 0, { id: "poke", label: "Poke" });
+  tabs.splice(SECTIONS.length, 0, { id: "poke", label: "Arma tu Poke" });
   nav.innerHTML = tabs.map(t => `<a href="#${t.id}" data-target="${t.id}">${t.label}</a>`).join("");
 
   /* Botón fijo "Categorías": despliega/cierra el listado, sin gesto de swipe */
