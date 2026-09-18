@@ -313,7 +313,7 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
 }
 .catnav-grid a:hover{background:var(--blue-soft)}
 .catnav-grid a.active{background:var(--blue);color:#fff;box-shadow:0 4px 10px rgba(41,50,217,.22)}
-.section-head,#poke,#info{scroll-margin-top:64px}
+.section-head,#poke-config,#info{scroll-margin-top:64px}
 @media(max-width:480px){.status-pill{font-size:9.5px;padding:7px 9px;gap:4px}}
 
 /* ---------- SECCIONES ---------- */
@@ -1025,7 +1025,7 @@ footer{
 </noscript>
 
 <!-- ============ POKE ============ -->
-<section id="poke">
+<section id="poke-config">
   <div class="section-head reveal">
     <h2>CONSTRUYE TU POKE</h2><span class="jp">ポケ</span><span class="rule"></span>
   </div>
@@ -1734,7 +1734,7 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
     ...SECTIONS.map(s => ({ id: s.id, label: s.title })),
     ...(DRINKS.length ? [{ id: "bebidas", label: "Bebidas" }] : [])
   ];
-  tabs.splice(SECTIONS.length, 0, { id: "poke", label: "Arma tu Poke" });
+  tabs.splice(SECTIONS.length, 0, { id: "poke-config", label: "Arma tu Poke" });
   nav.innerHTML = tabs.map(t => `<a href="#${t.id}" data-target="${t.id}">${t.label}</a>`).join("");
 
   /* Botón fijo "Categorías": despliega/cierra el listado, sin gesto de swipe */
@@ -1848,7 +1848,7 @@ const pokeConfig = (function(){
   }
 
   function renderChips(){
-    document.querySelectorAll("#poke .chips").forEach(box => {
+    document.querySelectorAll("#poke-config .chips").forEach(box => {
       const g = box.dataset.group;
       box.innerHTML = itemsOf(g).map(it => {
         const off = it.available === false;
@@ -1867,7 +1867,7 @@ const pokeConfig = (function(){
   function fmt(n){ return n.toFixed(2).replace(".",",") + "€"; }
 
   function refresh(){
-    document.querySelectorAll("#poke .chips").forEach(box => {
+    document.querySelectorAll("#poke-config .chips").forEach(box => {
       const g = box.dataset.group;
       box.querySelectorAll(".chip").forEach(c => {
         const v = c.dataset.v;
@@ -1895,7 +1895,7 @@ const pokeConfig = (function(){
     refresh();
   }
 
-  document.querySelector("#poke").addEventListener("click", e => {
+  document.querySelector("#poke-config").addEventListener("click", e => {
     const c = e.target.closest(".chip");
     if(c){
       const g = c.closest(".chips").dataset.group;
