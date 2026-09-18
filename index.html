@@ -159,34 +159,56 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
   background:linear-gradient(180deg,transparent 62%,var(--blue-soft) 0);
   padding:0 2px;
 }
-.hero-ctas{margin-top:34px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-/* Acciones rápidas: grid uniforme (no flex-wrap) para que, tenga 2 o 4
-   botones visibles según el estado, siempre quede en filas parejas y
-   centradas — nunca un botón suelto descolgado en su propia fila. */
-.hero-quick{
-  margin:18px auto 0;display:grid;grid-template-columns:repeat(2,minmax(150px,200px));
-  gap:10px;justify-content:center;max-width:440px;
+/* Fila única de acciones del hero: todas en línea horizontal, sin salto
+   de línea ni scroll. Usan palabras cortas (no solo iconos) para que
+   quepan las 5-7 acciones posibles en una sola fila en cualquier
+   pantalla; el título (aria-label) lleva el texto completo para
+   quien use un lector de pantalla. */
+.hero-row{
+  margin:34px auto 0;display:flex;flex-wrap:nowrap;gap:clamp(5px,1.6vw,12px);
+  width:100%;max-width:640px;justify-content:center;
 }
-.quick-btn{
-  display:flex;align-items:center;justify-content:center;gap:7px;
-  background:#fff;border:2px solid var(--line);color:var(--blue);
-  font-weight:800;font-size:12.5px;border-radius:999px;padding:11px 14px;
-  cursor:pointer;transition:.15s;font-family:'DM Sans',sans-serif;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  text-decoration:none;
+.action-btn{
+  position:relative;flex:0 1 auto;min-width:0;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  height:44px;padding:0 clamp(4px,1.6vw,14px);border-radius:999px;border:2px solid var(--line);
+  background:#fff;color:var(--blue);font-weight:800;font-family:'DM Sans',sans-serif;
+  font-size:clamp(10.5px,2.4vw,13px);cursor:pointer;transition:.15s;
+  white-space:nowrap;text-decoration:none;
 }
-.quick-btn:hover{border-color:var(--blue);background:var(--blue-soft)}
-.quick-btn[hidden]{display:none}
-.quick-btn.span-full{grid-column:1/-1;max-width:220px;margin:0 auto}
-.share-btn{
+.action-btn .ico{flex:0 0 auto;font-size:14px;line-height:1}
+.action-btn .txt{overflow:hidden;text-overflow:clip}
+.action-btn:hover{border-color:var(--blue);background:var(--blue-soft)}
+.action-btn[hidden]{display:none}
+.action-btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.action-btn.primary:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
+.action-btn.accent{
   background:var(--blue);border-color:var(--blue);color:#fff;
   box-shadow:0 6px 16px rgba(41,50,217,.3);
   animation:shareBounce 2.6s ease-in-out infinite;
 }
-.share-btn:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
+.action-btn.accent:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
 @keyframes shareBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-@media(prefers-reduced-motion:reduce){.share-btn{animation:none}}
-@media(max-width:380px){.hero-quick{grid-template-columns:1fr;max-width:240px}}
+@media(prefers-reduced-motion:reduce){.action-btn.accent{animation:none}}
+@media(max-width:360px){
+  .hero-row{gap:4px}
+  .action-btn{padding:0 5px;gap:3px}
+  .action-btn .ico{font-size:12px}
+}
+/* Cuando aparecen también "Instalar" y/o "Repetir" (hasta 7 botones a
+   la vez), se aprieta un poco más para que sigan cabiendo en una sola
+   fila sin desbordar. balanceHeroQuick() añade/quita esta clase. */
+.hero-row.many{gap:3px}
+.hero-row.many .action-btn{padding:0 7px;gap:3px;font-size:10px}
+.hero-row.many .action-btn .ico{font-size:12px}
+@media(max-width:480px){
+  /* Con 7 botones a la vez ya no cabe icono + palabra en móvil sin
+     encoger el texto hasta ilegible: se quita el icono (decorativo)
+     y se deja la palabra corta, que es lo que de verdad hay que leer. */
+  .hero-row.many{gap:2px}
+  .hero-row.many .action-btn{padding:0 5px;gap:0;font-size:9px}
+  .hero-row.many .action-btn .ico{display:none}
+}
 .coverage-check{
   margin:30px auto 0;max-width:400px;background:#fff;
   border:2.5px solid var(--blue);border-radius:20px;padding:18px 20px;
@@ -894,16 +916,14 @@ footer{
     <img class="wordmark-img" src="img/logo-largo-azul.png" alt="YOKAI">
     <div class="soon-badge">🎁 Club YOKAI — muy pronto: pide, acumula, gana</div>
     <p class="sub">El <strong>Japón más urbano y auténtico</strong>, en Onda. Comida japonesa fresca, hecha al momento y pensada para tu día a día. Pide en 2 minutos, recoge o te lo llevamos a casa.</p>
-    <div class="hero-ctas">
-      <a class="btn primary" href="#carta">Ver la carta y pedir</a>
-      <button class="btn line" onclick="openCart()">🛒 Mi pedido</button>
-    </div>
-    <div class="hero-quick" id="heroQuick">
-      <button class="quick-btn" id="howBtn" type="button">❓ ¿Cómo pedir?</button>
-      <a class="quick-btn" id="hoursBtn" href="#info">📍 Horario y ubicación</a>
-      <button class="quick-btn" id="installBtn" hidden>📲 Instalar app</button>
-      <button class="quick-btn" id="repeatBtn" hidden>🔁 Repetir mi último pedido</button>
-      <button class="quick-btn share-btn" id="shareBtn">📤 ¡Comparte la carta!</button>
+    <div class="hero-row" id="heroQuick">
+      <a class="action-btn primary" href="#carta" aria-label="Ver la carta y pedir"><span class="ico" aria-hidden="true">📖</span><span class="txt">Carta</span></a>
+      <button class="action-btn" type="button" onclick="openCart()" aria-label="Mi pedido"><span class="ico" aria-hidden="true">🛒</span><span class="txt">Pedido</span></button>
+      <button class="action-btn" id="howBtn" type="button" aria-label="¿Cómo pedir?"><span class="ico" aria-hidden="true">❓</span><span class="txt">Ayuda</span></button>
+      <a class="action-btn" id="hoursBtn" href="#info" aria-label="Horario y ubicación"><span class="ico" aria-hidden="true">📍</span><span class="txt">Horario</span></a>
+      <button class="action-btn" id="installBtn" hidden aria-label="Instalar app"><span class="ico" aria-hidden="true">📲</span><span class="txt">Instalar</span></button>
+      <button class="action-btn" id="repeatBtn" hidden aria-label="Repetir mi último pedido"><span class="ico" aria-hidden="true">🔁</span><span class="txt">Repetir</span></button>
+      <button class="action-btn accent" id="shareBtn" aria-label="¡Comparte la carta!"><span class="ico" aria-hidden="true">📤</span><span class="txt">Compartir</span></button>
     </div>
     <div class="coverage-check">
       <div class="coverage-label">📍 ¿Repartimos en tu zona?</div>
@@ -918,6 +938,24 @@ footer{
     <img class="hero-char" src="img/char-walk.png" alt="Personaje YOKAI andando con su pedido">
   </div>
   <div class="scroll-hint">Desliza 👇</div>
+</section>
+
+<!-- ============ LA MARCA ============ -->
+<section class="brand reveal" id="marca">
+  <div class="brand-band">
+    <div class="k jp" aria-hidden="true">妖怪</div>
+    <div class="brand-inner">
+      <h2>EL JAPÓN URBANO,<br>EN ONDA</h2>
+      <p>YOKAI nace en Onda para traer a la mesa el Japón más urbano y auténtico: el de los carteles iluminados, los sabores callejeros y la energía de la calle. Comida japonesa fresca y de calidad, hecha al momento y pensada para disfrutarse en el día a día, sin etiquetas de lujo ni exclusividad.</p>
+      <div class="brand-tags">
+        <span>Cercanía</span><span>Autenticidad urbana</span>
+        <span>Diseño con carácter</span><span>Calidad cotidiana</span>
+      </div>
+    </div>
+    <div class="brand-char-badge">
+      <img class="brand-char" src="img/char-ramen.png" alt="Personaje YOKAI comiendo ramen">
+    </div>
+  </div>
 </section>
 
 <!-- ============ MARQUEE ============ -->
@@ -1053,24 +1091,6 @@ footer{
   <h2>BEBIDAS</h2><span class="jp">飲み物</span><span class="rule"></span>
 </div>
 <div class="drinks-grid" id="drinkGrid"></div>
-
-<!-- ============ LA MARCA ============ -->
-<section class="brand reveal" id="marca">
-  <div class="brand-band">
-    <div class="k jp" aria-hidden="true">妖怪</div>
-    <div class="brand-inner">
-      <h2>EL JAPÓN URBANO,<br>EN ONDA</h2>
-      <p>YOKAI nace en Onda para traer a la mesa el Japón más urbano y auténtico: el de los carteles iluminados, los sabores callejeros y la energía de la calle. Comida japonesa fresca y de calidad, hecha al momento y pensada para disfrutarse en el día a día, sin etiquetas de lujo ni exclusividad.</p>
-      <div class="brand-tags">
-        <span>Cercanía</span><span>Autenticidad urbana</span>
-        <span>Diseño con carácter</span><span>Calidad cotidiana</span>
-      </div>
-    </div>
-    <div class="brand-char-badge">
-      <img class="brand-char" src="img/char-ramen.png" alt="Personaje YOKAI comiendo ramen">
-    </div>
-  </div>
-</section>
 
 <!-- ============ HORARIO Y UBICACIÓN ============ -->
 <section id="info">
@@ -2708,13 +2728,14 @@ waSend.addEventListener("click", async () => {
 
 renderCart();
 
-/* ---- Accesos rápidos del hero: centrar el último botón si quedan en número impar ---- */
+/* ---- Accesos del hero: cuando se muestran también "Instalar app" y/o
+   "Repetir pedido" (hasta 7 botones a la vez), se aprieta un poco el
+   espaciado para que sigan cabiendo en una sola fila. ---- */
 function balanceHeroQuick(){
   const row = document.getElementById("heroQuick");
   if(!row) return;
-  const items = Array.from(row.children).filter(el => !el.hidden);
-  row.querySelectorAll(".quick-btn").forEach(el => el.classList.remove("span-full"));
-  if(items.length % 2 === 1) items[items.length - 1].classList.add("span-full");
+  const visibleCount = Array.from(row.children).filter(el => !el.hidden).length;
+  row.classList.toggle("many", visibleCount >= 6);
 }
 balanceHeroQuick();
 
