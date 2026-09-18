@@ -170,7 +170,7 @@
   .card{
     background:var(--paper);border-radius:16px;box-shadow:var(--shadow);
     border-top:4px solid var(--st, var(--accent));padding:14px 14px 12px;
-    display:flex;flex-direction:column;gap:9px;
+    display:flex;flex-direction:column;gap:9px;cursor:pointer;
   }
   .card-top{display:flex;align-items:flex-start;gap:8px}
   .card-name{font-weight:800;font-size:14.5px;flex:1;min-width:0;word-break:break-word}
@@ -180,6 +180,21 @@
   }
   .time-chip.warn{background:var(--st-prep-soft);color:var(--st-prep)}
   .time-chip.urgent{background:var(--urgent-soft);color:var(--urgent)}
+
+  .card-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:-2px}
+  .card-summary .mono{font-weight:800;font-size:14px}
+  .card-badges{display:flex;gap:5px;font-size:13px}
+  .card-toggle{
+    align-self:flex-start;border:none;background:none;color:var(--accent);
+    font-size:11.5px;font-weight:700;padding:0;cursor:pointer;font-family:inherit;
+  }
+  .card-details{display:flex;flex-direction:column;gap:9px}
+  .stage-times{
+    display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--ink-dim);
+    background:var(--mist);border-radius:9px;padding:7px 9px;
+  }
+  .stage-times .st-row{display:flex;justify-content:space-between;gap:10px}
+  .stage-times .st-row.live{color:var(--ink);font-weight:700}
 
   .items{display:flex;flex-direction:column;gap:3px;font-size:12.5px}
   .item-row{display:flex;justify-content:space-between;gap:10px}
@@ -311,6 +326,8 @@
   .ticket .t-detail{font-size:11px;padding-left:14px}
   .ticket .t-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin:8px 0 2px;font-weight:700}
   .ticket .t-big{font-weight:700;font-size:13.5px}
+  .ticket .t-cat{font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin:8px 0 2px;border-bottom:1px solid #000;padding-bottom:1px}
+  .ticket .t-cat:first-child{margin-top:0}
 
   @media print{
     body *{visibility:hidden}
@@ -421,7 +438,7 @@
 
     <div class="sheet-actions">
       <button class="analyze" id="btnAnalyze" type="button">Analizar pedido</button>
-      <button class="confirm" id="btnConfirm" type="button" hidden>Añadir a Nuevos</button>
+      <button class="confirm" id="btnConfirm" type="button" hidden>Añadir a Preparando</button>
     </div>
   </div>
 </div>
@@ -452,11 +469,12 @@
   }
 
   var COLUMNS = [
-    { id:"nuevo",     label:"Nuevo",       var:"--st-nuevo" },
-    { id:"preparando",label:"Preparando",  var:"--st-prep" },
-    { id:"listo",     label:"Listo",       var:"--st-listo" },
-    { id:"entregado", label:"Entregado",   var:"--st-entregado" }
+    { id:"preparando",label:"Preparando",         short:"Preparando", var:"--st-prep" },
+    { id:"listo",     label:"Esperando recogida", short:"Esperando",  var:"--st-listo" },
+    { id:"entregado", label:"Finalizado",         short:"Finalizado", var:"--st-entregado" }
   ];
+  var INITIAL_STATUS = COLUMNS[0].id;
+  var STAGE_TS_FIELD = { preparando:"tsPreparando", listo:"tsListo", entregado:"tsEntregado" };
 
   /* ---------------- lock screen ---------------- */
   var lockWrap = document.getElementById("lockWrap");
@@ -548,6 +566,124 @@
     return 0;
   }
 
+  /* ---------------- fecha/hora helpers ---------------- */
+  function fmtFecha(ts){
+    return new Date(ts).toLocaleDateString("es-ES", { day:"2-digit", month:"2-digit", year:"numeric" });
+  }
+  function fmtHora(ts){
+    return new Date(ts).toLocaleTimeString("es-ES", { hour:"2-digit", minute:"2-digit" });
+  }
+  function fmtStageMin(ms){
+    var min = Math.max(0, Math.round(ms/60000));
+    return min + " min";
+  }
+
+  /* ---------------- categorías de la carta (para agrupar el ticket) ----------------
+     Se leen de la misma hoja pública que usa index.html, así queda siempre
+     sincronizado con la carta real sin mantener nada a mano. */
+  var CARTA_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSf8GETYkg-cqI5sIqx6AfRWKqDHFwgrJ9kS1ZwetPFIQX4WssP5hhQjP_spScNMEFL_h8GIqQQ-Oi6/pub?gid=836486597&single=true&output=csv";
+  var POKE_SHEET_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSf8GETYkg-cqI5sIqx6AfRWKqDHFwgrJ9kS1ZwetPFIQX4WssP5hhQjP_spScNMEFL_h8GIqQQ-Oi6/pub?gid=47641986&single=true&output=csv";
+
+  var CATEGORY_BUCKETS = {
+    "ENTRANTES":"Entrantes",
+    "SASHIMI":"Sushi", "NIGIRI":"Sushi", "HOSOMAKI":"Sushi", "MAKI BOCADO":"Sushi",
+    "URAMAKI ESPECIAL":"Sushi", "ROLLS · URAMAKI":"Sushi", "ROLLS TEMPURA":"Sushi", "TARTAR":"Sushi",
+    "COMBINACIONES":"Combos",
+    "PLATOS CALIENTES":"Platos calientes",
+    "POSTRES":"Postres"
+  };
+  var PRINT_CATEGORY_ORDER = ["Entrantes","Sushi","Combos","Platos calientes","Bebidas","Postres","Otros"];
+
+  function normalizeItemName(s){
+    return String(s||"").toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g,"")
+      .replace(/\([^)]*\)/g," ")
+      .replace(/[^a-z0-9 ]/g," ")
+      .replace(/\s+/g," ")
+      .trim();
+  }
+
+  function parseCsv(text){
+    var rows = [], row = [], field = "", inQuotes = false;
+    for(var i=0;i<text.length;i++){
+      var c = text[i];
+      if(inQuotes){
+        if(c === '"'){
+          if(text[i+1] === '"'){ field += '"'; i++; } else inQuotes = false;
+        } else field += c;
+      } else if(c === '"'){ inQuotes = true; }
+      else if(c === ','){ row.push(field); field = ""; }
+      else if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ""; }
+      else if(c === '\r'){ /* noop */ }
+      else field += c;
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  var menuCategoryMap = null;
+  var menuCategoryPromise = null;
+  function loadMenuCategoryMap(){
+    if(menuCategoryPromise) return menuCategoryPromise;
+    menuCategoryPromise = Promise.all(
+      [CARTA_SHEET_URL, POKE_SHEET_URL].map(function(url){
+        return fetch(url).then(function(r){ return r.text(); }).catch(function(){ return ""; });
+      })
+    ).then(function(texts){
+      var map = {};
+      texts.forEach(function(text){
+        if(!text) return;
+        var rows = parseCsv(text);
+        if(!rows.length) return;
+        var headers = rows[0].map(function(h){ return String(h||"").trim().toLowerCase(); });
+        var idxNombre = headers.indexOf("nombre");
+        var idxSeccion = headers.indexOf("seccion");
+        var idxTipo = headers.indexOf("tipo");
+        if(idxNombre < 0) return;
+        for(var i=1;i<rows.length;i++){
+          var r = rows[i];
+          if(!r || !r[idxNombre]) continue;
+          var seccion = idxSeccion >= 0 ? String(r[idxSeccion]||"").trim().toUpperCase() : "";
+          var tipo = idxTipo >= 0 ? String(r[idxTipo]||"").trim().toLowerCase() : "";
+          var bucket = tipo === "bebida" ? "Bebidas" : (CATEGORY_BUCKETS[seccion] || "Otros");
+          var norm = normalizeItemName(r[idxNombre]);
+          if(norm) map[norm] = bucket;
+        }
+      });
+      menuCategoryMap = map;
+      return map;
+    }).catch(function(){ menuCategoryMap = {}; return menuCategoryMap; });
+    return menuCategoryPromise;
+  }
+  // precargar en cuanto arranca el panel, para que esté lista al primer "Imprimir"
+  loadMenuCategoryMap();
+
+  function categoryFor(itemName, map){
+    var norm = normalizeItemName(itemName);
+    if(!norm) return "Otros";
+    if(map[norm]) return map[norm];
+    var keys = Object.keys(map);
+    for(var i=0;i<keys.length;i++){
+      if(keys[i] && (norm.indexOf(keys[i]) === 0 || keys[i].indexOf(norm) === 0)) return map[keys[i]];
+    }
+    return "Otros";
+  }
+
+  function groupItemsByCategory(items, map){
+    var groups = {};
+    items.forEach(function(it){
+      var cat = categoryFor(it.name, map);
+      if(!groups[cat]) groups[cat] = [];
+      groups[cat].push(it);
+    });
+    return PRINT_CATEGORY_ORDER
+      .filter(function(cat){ return groups[cat] && groups[cat].length; })
+      .map(function(cat){ return { cat:cat, items:groups[cat] }; })
+      .concat(Object.keys(groups)
+        .filter(function(cat){ return PRINT_CATEGORY_ORDER.indexOf(cat) === -1; })
+        .map(function(cat){ return { cat:cat, items:groups[cat] }; }));
+  }
+
   /* ---------------- sync indicator ---------------- */
   var syncDot = document.getElementById("syncDot");
   function setSync(state){
@@ -629,6 +765,7 @@
   var boardEl = document.getElementById("board");
   var orders = [];
   var pendingActions = 0;
+  var expandedIds = {};
 
   function fmtElapsed(ms){
     var min = Math.floor(ms/60000);
@@ -676,7 +813,7 @@
       if(!colOrders.length){
         var empty = document.createElement("div");
         empty.className = "col-empty";
-        empty.textContent = col.id === "nuevo" ? "Sin pedidos — pulsa “Nuevo pedido” para añadir uno" : "Sin pedidos";
+        empty.textContent = col.id === INITIAL_STATUS ? "Sin pedidos — pulsa “Nuevo pedido” para añadir uno" : "Sin pedidos";
         body.appendChild(empty);
       }
 
@@ -689,12 +826,33 @@
     });
   }
 
+  function buildStageRows(o){
+    var now = Date.now();
+    var starts = { preparando: o.tsPreparando || o.createdAt, listo: o.tsListo || null, entregado: o.tsEntregado || null };
+    var rows = [];
+    if(starts.preparando){
+      var prepEnd = starts.listo || (o.status === "preparando" ? now : null);
+      if(prepEnd) rows.push({ label:"Preparando", value: fmtStageMin(prepEnd - starts.preparando), live: o.status === "preparando" });
+    }
+    if(starts.listo){
+      var waitEnd = starts.entregado || (o.status === "listo" ? now : null);
+      if(waitEnd) rows.push({ label:"Esperando recogida", value: fmtStageMin(waitEnd - starts.listo), live: o.status === "listo" });
+    }
+    if(starts.entregado){
+      rows.push({ label:"Finalizado hace", value: fmtStageMin(now - starts.entregado), live:true });
+    }
+    return rows;
+  }
+
   function renderCard(o, col){
     var card = document.createElement("div");
     card.className = "card";
     card.style.setProperty("--st", "var(" + col.var + ")");
+    card.dataset.id = o.id;
 
-    var elapsedMs = Date.now() - o.createdAt;
+    var stageField = STAGE_TS_FIELD[o.status];
+    var stageStart = (stageField && o[stageField]) ? o[stageField] : o.createdAt;
+    var elapsedMs = Date.now() - stageStart;
     var elapsedMin = Math.floor(elapsedMs/60000);
     var chipClass = elapsedClass(elapsedMin, o.status);
 
@@ -704,6 +862,28 @@
       '<div class="card-name">' + escapeHtml(o.name || "Cliente sin nombre") + '</div>' +
       '<span class="time-chip ' + chipClass + '">' + fmtElapsed(elapsedMs) + '</span>';
     card.appendChild(top);
+
+    var summary = document.createElement("div");
+    summary.className = "card-summary";
+    var badges = "";
+    if(o.mode) badges += (String(o.mode).toLowerCase().indexOf("domicilio") > -1 ? "🛵" : "🏪");
+    if(o.payment && o.payment.method) badges += (/efectivo/i.test(o.payment.method) ? "💶" : /tarjeta/i.test(o.payment.method) ? "💳" : "💰");
+    summary.innerHTML =
+      '<span class="mono">' + escapeHtml(o.total || fmtEuro(o.totalValue||0)) + '</span>' +
+      (badges ? '<span class="card-badges">' + badges + '</span>' : '<span></span>');
+    card.appendChild(summary);
+
+    var expanded = !!expandedIds[o.id];
+
+    var toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "card-toggle";
+    toggle.textContent = expanded ? "▴ Ocultar detalles" : "▾ Ver detalles";
+    card.appendChild(toggle);
+
+    var details = document.createElement("div");
+    details.className = "card-details";
+    details.hidden = !expanded;
 
     if(o.items && o.items.length){
       var items = document.createElement("div");
@@ -720,45 +900,45 @@
           items.appendChild(d);
         }
       });
-      card.appendChild(items);
+      details.appendChild(items);
     }
 
     if(o.condiments){
       var cond = document.createElement("div");
       cond.className = "cond-line";
       cond.textContent = "Soja/wasabi/jengibre: " + o.condiments;
-      card.appendChild(cond);
+      details.appendChild(cond);
     }
 
     if(o.discount && o.discount.amount > 0){
       var subtotalRow = document.createElement("div");
       subtotalRow.className = "subtotal-row";
       subtotalRow.innerHTML = '<span>Subtotal</span><span class="mono">' + escapeHtml(o.subtotal || fmtEuro(o.subtotalValue||0)) + '</span>';
-      card.appendChild(subtotalRow);
+      details.appendChild(subtotalRow);
 
       var discRow = document.createElement("div");
       discRow.className = "discount-row";
       var discText = o.discount.label ? escapeHtml(o.discount.label) :
         (o.discount.type === "percent" ? "Descuento " + o.discount.value + "%" : "Descuento");
       discRow.innerHTML = '<span>🏷️ ' + discText + '</span><span class="mono">−' + fmtEuro(o.discount.amount) + '</span>';
-      card.appendChild(discRow);
+      details.appendChild(discRow);
 
       var totalRow = document.createElement("div");
       totalRow.className = "total-row no-line";
       totalRow.innerHTML = '<span>Total</span><span class="mono">' + escapeHtml(o.total) + '</span>';
-      card.appendChild(totalRow);
+      details.appendChild(totalRow);
     } else if(o.total){
       var totalRowPlain = document.createElement("div");
       totalRowPlain.className = "total-row";
       totalRowPlain.innerHTML = '<span>Total</span><span class="mono">' + escapeHtml(o.total) + '</span>';
-      card.appendChild(totalRowPlain);
+      details.appendChild(totalRowPlain);
     }
 
     if(o.mode){
       var modeChip = document.createElement("div");
       modeChip.className = "mode-chip";
       modeChip.textContent = (String(o.mode).toLowerCase().indexOf("domicilio") > -1 ? "🛵 " : "🏪 ") + o.mode;
-      card.appendChild(modeChip);
+      details.appendChild(modeChip);
     }
 
     if(o.payment && o.payment.method){
@@ -771,7 +951,7 @@
         else if(o.payment.cash) payTxt += " · Paga con " + o.payment.cash + " (sin cambio)";
       }
       payChip.textContent = payTxt;
-      card.appendChild(payChip);
+      details.appendChild(payChip);
     }
 
     var metaParts = [];
@@ -782,28 +962,52 @@
       var meta = document.createElement("div");
       meta.className = "meta";
       meta.innerHTML = metaParts.join("");
-      card.appendChild(meta);
+      details.appendChild(meta);
     }
 
     if(o.notes){
       var notes = document.createElement("div");
       notes.className = "notes-box";
       notes.textContent = "📝 " + o.notes;
-      card.appendChild(notes);
+      details.appendChild(notes);
     }
+
+    var stageRows = buildStageRows(o);
+    if(stageRows.length){
+      var stageBox = document.createElement("div");
+      stageBox.className = "stage-times";
+      stageBox.innerHTML = stageRows.map(function(r){
+        return '<div class="st-row' + (r.live ? ' live' : '') + '"><span>' + escapeHtml(r.label) + '</span><span class="mono">' + escapeHtml(r.value) + '</span></div>';
+      }).join("");
+      details.appendChild(stageBox);
+    }
+
+    card.appendChild(details);
 
     var idx = COLUMNS.findIndex(function(c){ return c.id === o.status; });
     var actions = document.createElement("div");
     actions.className = "card-actions";
     var html = "";
-    if(idx > 0) html += '<button data-move="' + COLUMNS[idx-1].id + '" data-id="' + o.id + '">‹ ' + COLUMNS[idx-1].label + '</button>';
-    if(idx < COLUMNS.length-1) html += '<button class="primary" data-move="' + COLUMNS[idx+1].id + '" data-id="' + o.id + '">' + COLUMNS[idx+1].label + ' ›</button>';
-    if(o.status === "nuevo"){
+    if(idx > 0) html += '<button data-move="' + COLUMNS[idx-1].id + '" data-id="' + o.id + '">‹ ' + COLUMNS[idx-1].short + '</button>';
+    if(idx < COLUMNS.length-1) html += '<button class="primary" data-move="' + COLUMNS[idx+1].id + '" data-id="' + o.id + '">' + COLUMNS[idx+1].short + ' ›</button>';
+    if(o.status === INITIAL_STATUS){
       html += '<button class="icon-btn" data-print="' + o.id + '" aria-label="Imprimir comanda" title="Imprimir comanda">🖨️</button>';
     }
     html += '<button class="ghost-x" data-del="' + o.id + '" aria-label="Eliminar" title="Eliminar">✕</button>';
     actions.innerHTML = html;
     card.appendChild(actions);
+
+    function toggleExpand(){
+      if(expandedIds[o.id]) delete expandedIds[o.id];
+      else expandedIds[o.id] = true;
+      details.hidden = !expandedIds[o.id];
+      toggle.textContent = expandedIds[o.id] ? "▴ Ocultar detalles" : "▾ Ver detalles";
+    }
+    card.addEventListener("click", function(e){
+      if(e.target.closest("button, a, input")) return;
+      toggleExpand();
+    });
+    toggle.addEventListener("click", function(e){ e.stopPropagation(); toggleExpand(); });
 
     return card;
   }
@@ -816,18 +1020,30 @@
 
   /* ---------------- ticket de impresión ---------------- */
   function printTicket(o){
+    return loadMenuCategoryMap().then(function(map){
+      renderTicket(o, map || {});
+    }).catch(function(){
+      renderTicket(o, {});
+    });
+  }
+
+  function renderTicket(o, categoryMap){
     var time = new Date(o.createdAt);
     var timeStr = time.toLocaleTimeString("es-ES", { hour:"2-digit", minute:"2-digit" });
 
     var h = '<div class="ticket">';
     h += '<h2>🍣 YOKAI</h2>';
-    h += '<div class="ticket-sub">Comanda · ' + escapeHtml(timeStr) + '</div>';
+    h += '<div class="ticket-sub">Comanda · ' + escapeHtml(o.fecha ? (o.fecha + " " + timeStr) : timeStr) + '</div>';
     h += '<hr>';
 
     if(o.items && o.items.length){
-      o.items.forEach(function(it){
-        h += '<div class="t-row"><span>' + escapeHtml(it.qty) + 'x ' + escapeHtml(it.name) + '</span><span>' + escapeHtml(it.price||"") + '</span></div>';
-        if(it.detail) h += '<div class="t-detail">' + escapeHtml(it.detail) + '</div>';
+      var grouped = groupItemsByCategory(o.items, categoryMap);
+      grouped.forEach(function(g){
+        h += '<div class="t-cat">' + escapeHtml(g.cat) + '</div>';
+        g.items.forEach(function(it){
+          h += '<div class="t-row"><span>' + escapeHtml(it.qty) + 'x ' + escapeHtml(it.name) + '</span><span>' + escapeHtml(it.price||"") + '</span></div>';
+          if(it.detail) h += '<div class="t-detail">' + escapeHtml(it.detail) + '</div>';
+        });
       });
     }
 
@@ -907,10 +1123,27 @@
 
   function moveOrder(id, status){
     var o = orders.find(function(x){ return x.id === id; });
-    if(o) o.status = status;
+    var payload = { action: "move", id: id, status: status };
+    if(o){
+      o.status = status;
+      var targetIdx = COLUMNS.findIndex(function(c){ return c.id === status; });
+      var now = Date.now();
+      COLUMNS.forEach(function(c, i){
+        var field = STAGE_TS_FIELD[c.id];
+        if(!field) return;
+        if(i === targetIdx){
+          o[field] = now;
+          payload[field] = now;
+        } else if(i > targetIdx && o[field]){
+          // volver a una etapa anterior invalida los tiempos de las etapas posteriores
+          o[field] = null;
+          payload[field] = "";
+        }
+      });
+    }
     renderBoard();
     setSync("busy");
-    return jsonp({ action: "move", id: id, status: status }).then(function(res){
+    return jsonp(payload).then(function(res){
       if(!res || !res.ok) showToast("No se pudo actualizar en la Hoja", true);
       setSync(res && res.ok ? "ok" : "err");
     }).catch(function(){ showToast("Sin conexión — no se guardó el cambio", true); setSync("err"); });
@@ -1141,9 +1374,10 @@
       change: fPayChange.value.trim()
     } : null;
 
+    var createdAt = Date.now();
     var order = {
       id: "o" + Date.now() + Math.random().toString(36).slice(2,7),
-      status: "nuevo",
+      status: INITIAL_STATUS,
       items: items,
       subtotal: totalStr,
       subtotalValue: subtotalValue,
@@ -1158,11 +1392,16 @@
       name: document.getElementById("fName").value.trim(),
       phone: document.getElementById("fPhone").value.trim(),
       notes: document.getElementById("fNotes").value.trim(),
-      createdAt: Date.now()
+      createdAt: createdAt,
+      fecha: fmtFecha(createdAt),
+      hora: fmtHora(createdAt),
+      tsPreparando: createdAt,
+      tsListo: null,
+      tsEntregado: null
     };
     closeModal();
     beep();
-    showToast(discount ? "✓ Pedido añadido con descuento aplicado" : "✓ Pedido añadido a Nuevos");
+    showToast(discount ? "✓ Pedido añadido con descuento aplicado" : "✓ Pedido añadido a Preparando");
     createOrder(order);
   });
 
