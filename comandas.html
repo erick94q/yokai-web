@@ -140,6 +140,61 @@
     display:flex;align-items:center;gap:7px;box-shadow:var(--shadow);white-space:nowrap;
   }
   .btn-new:hover{filter:brightness(1.06)}
+  .btn-ghost{
+    background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:999px;
+    padding:11px 18px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;
+    display:flex;align-items:center;gap:7px;white-space:nowrap;
+  }
+  .btn-ghost:hover{background:var(--mist)}
+  .btn-ghost.btn-icon-only{padding:11px;width:42px;justify-content:center}
+
+  /* ---------- historial ---------- */
+  .hist-sheet{max-width:640px}
+  .hist-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .hist-toolbar select{width:auto;flex:0 1 auto;min-width:140px}
+  .hist-summary{font-size:12.5px;font-weight:700;color:var(--ink-dim);margin-left:auto}
+  .hist-list{display:flex;flex-direction:column;gap:8px}
+  .hist-item{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .hist-row{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;background:var(--paper);
+  }
+  .hist-time{color:var(--ink-dim);font-size:12px;flex:0 0 auto}
+  .hist-name{flex:1;min-width:0;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hist-badge{flex:0 0 auto;font-size:13px}
+  .hist-total{flex:0 0 auto;font-weight:800;font-size:13px}
+  .hist-row button{
+    flex:0 0 auto;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);
+    background:var(--paper);color:var(--ink-dim);cursor:pointer;font-size:13px;padding:0;
+  }
+  .hist-toggle{border:none!important;background:none!important;color:var(--accent)!important}
+  .hist-details{padding:2px 14px 14px;display:flex;flex-direction:column;gap:9px;background:var(--mist)}
+
+  /* ---------- configuración ---------- */
+  .config-sheet{max-width:560px}
+  .config-section{margin-bottom:20px}
+  .config-section h4{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-dim);margin-bottom:4px}
+  .config-hint{font-size:11.5px;color:var(--ink-dim);line-height:1.5;margin:0 0 10px}
+  .promo-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+  .promo-row{
+    display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;
+    padding:8px 10px;font-size:12.5px;
+  }
+  .promo-row .promo-name{flex:1;font-weight:700}
+  .promo-row .promo-val{color:var(--ink-dim)}
+  .promo-row button{
+    flex:0 0 auto;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);
+    background:var(--paper);color:var(--urgent);cursor:pointer;font-size:12px;padding:0;
+  }
+  .promo-form{display:grid;grid-template-columns:1.4fr 1fr .8fr auto;gap:8px;align-items:end}
+  .promo-form label{margin:0 0 5px}
+  .promo-form button{
+    border:none;border-radius:10px;background:var(--accent);color:var(--accent-ink);
+    font-weight:800;font-size:13px;padding:10px 14px;cursor:pointer;font-family:inherit;height:38px;
+  }
+  .locked-note{
+    font-size:11.5px;color:var(--ink-dim);background:var(--mist);border-radius:9px;padding:9px 11px;
+    line-height:1.5;
+  }
 
   /* ---------- board ---------- */
   .board{
@@ -375,6 +430,8 @@
       <div class="stat"><span class="n mono" id="statCount">0</span><span class="l">Hoy</span></div>
       <div class="stat"><span class="n mono" id="statTotal">0€</span><span class="l">Ingresos</span></div>
     </div>
+    <button class="btn-ghost" id="btnHist" type="button">🕘 Historial</button>
+    <button class="btn-ghost btn-icon-only" id="btnConfig" type="button" aria-label="Configuración" title="Configuración">⚙️</button>
     <button class="btn-new" id="btnNew" type="button">✚ Nuevo pedido</button>
   </div>
 
@@ -382,7 +439,7 @@
     <!-- columns injected by JS -->
   </div>
 
-  <p class="footnote">Los pedidos se guardan en tu Google Sheet — pega aquí el mensaje de WhatsApp de cada pedido nuevo.</p>
+  <p class="footnote">Los pedidos se guardan en tu Google Sheet — pega aquí el mensaje de WhatsApp de cada pedido nuevo. Al finalizar un pedido pasa al Historial.</p>
 </div>
 
 <div class="overlay" id="overlay">
@@ -406,7 +463,10 @@
       </div>
 
       <label>Descuento / promoción</label>
-      <div class="field-row">
+      <select id="fPromoSelect">
+        <option value="">— Elegir promoción guardada (opcional) —</option>
+      </select>
+      <div class="field-row" style="margin-top:8px">
         <select id="fDiscType">
           <option value="none">Sin descuento</option>
           <option value="percent">% descuento</option>
@@ -443,6 +503,46 @@
   </div>
 </div>
 
+<div class="overlay" id="histOverlay">
+  <div class="sheet hist-sheet">
+    <div class="sheet-head">
+      <h3>Historial de pedidos</h3>
+      <button class="sheet-close" id="btnHistClose" aria-label="Cerrar" type="button">×</button>
+    </div>
+    <div class="hist-toolbar">
+      <select id="histDateSelect"></select>
+      <span class="hist-summary" id="histSummary"></span>
+    </div>
+    <div class="hist-list" id="histList"></div>
+  </div>
+</div>
+
+<div class="overlay" id="configOverlay">
+  <div class="sheet config-sheet">
+    <div class="sheet-head">
+      <h3>Configuración</h3>
+      <button class="sheet-close" id="btnConfigClose" aria-label="Cerrar" type="button">×</button>
+    </div>
+
+    <div class="config-section">
+      <h4>Promociones de descuento</h4>
+      <p class="config-hint">Guarda aquí las promociones que uséis habitualmente para elegirlas con un clic al crear un pedido, en vez de escribir el descuento cada vez.</p>
+      <div class="promo-list" id="promoList"></div>
+      <div class="promo-form">
+        <div><label>Nombre</label><input id="promoName" placeholder="Ej. Estudiantes"></div>
+        <div><label>Tipo</label><select id="promoType"><option value="percent">%</option><option value="fixed">€</option></select></div>
+        <div><label>Valor</label><input id="promoValue" type="number" min="0" step="0.01" placeholder="10"></div>
+        <button type="button" id="btnAddPromo">Añadir</button>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <h4>Conexión con Google Sheets</h4>
+      <p class="locked-note">🔒 La URL del script y la clave de acceso no se pueden cambiar desde aquí para evitar que el panel deje de funcionar por error. Si hay que cambiarlas, se editan directamente en el archivo <code>comandas.html</code>.</p>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <div id="printArea"></div>
@@ -468,12 +568,14 @@
     return;
   }
 
+  // "entregado" ya no es una columna del tablero: un pedido finalizado sale
+  // del tablero en vivo y pasa al Historial (no se puede volver atrás).
   var COLUMNS = [
     { id:"preparando",label:"Preparando",         short:"Preparando", var:"--st-prep" },
-    { id:"listo",     label:"Esperando recogida", short:"Esperando",  var:"--st-listo" },
-    { id:"entregado", label:"Finalizado",         short:"Finalizado", var:"--st-entregado" }
+    { id:"listo",     label:"Esperando recogida", short:"Esperando",  var:"--st-listo" }
   ];
   var INITIAL_STATUS = COLUMNS[0].id;
+  var FINAL_STATUS = "entregado";
   var STAGE_TS_FIELD = { preparando:"tsPreparando", listo:"tsListo", entregado:"tsEntregado" };
 
   /* ---------------- lock screen ---------------- */
@@ -524,7 +626,7 @@
         settled = true;
         cleanup();
         reject(new Error("timeout"));
-      }, timeoutMs || 12000);
+      }, timeoutMs || 20000);
 
       function cleanup(){
         clearTimeout(timer);
@@ -575,7 +677,9 @@
   }
   function fmtStageMin(ms){
     var min = Math.max(0, Math.round(ms/60000));
-    return min + " min";
+    if(min < 60) return min + " min";
+    var h = Math.floor(min/60);
+    return h + "h " + (min%60) + "m";
   }
 
   /* ---------------- categorías de la carta (para agrupar el ticket) ----------------
@@ -657,6 +761,7 @@
   }
   // precargar en cuanto arranca el panel, para que esté lista al primer "Imprimir"
   loadMenuCategoryMap();
+  loadPromos();
 
   function categoryFor(itemName, map){
     var norm = normalizeItemName(itemName);
@@ -766,6 +871,7 @@
   var orders = [];
   var pendingActions = 0;
   var expandedIds = {};
+  var lastStatsToday = null;
 
   function fmtElapsed(ms){
     var min = Math.floor(ms/60000);
@@ -781,17 +887,27 @@
     return "";
   }
 
-  function renderBoard(){
-    boardEl.innerHTML = "";
+  function updateStats(stats){
+    if(stats){
+      document.getElementById("statCount").textContent = stats.count;
+      document.getElementById("statTotal").textContent = fmtEuro(stats.total||0);
+      return;
+    }
+    // Respaldo si el backend todavía no manda statsToday (versión antigua del
+    // script sin redesplegar): lo calculamos con lo que haya en memoria.
     var today = new Date(); today.setHours(0,0,0,0);
     var todayTs = today.getTime();
     var countToday = 0, totalToday = 0;
-
     orders.forEach(function(o){
       if(o.createdAt >= todayTs){ countToday++; totalToday += (o.totalValue||0); }
     });
     document.getElementById("statCount").textContent = countToday;
-    document.getElementById("statTotal").textContent = totalToday.toFixed(2).replace(".",",") + "€";
+    document.getElementById("statTotal").textContent = fmtEuro(totalToday);
+  }
+
+  function renderBoard(){
+    boardEl.innerHTML = "";
+    updateStats(lastStatsToday);
 
     COLUMNS.forEach(function(col){
       var colOrders = orders.filter(function(o){ return o.status === col.id; })
@@ -803,8 +919,7 @@
       head.innerHTML =
         '<span class="col-dot" style="background:var(' + col.var + ')"></span>' +
         '<h2 style="color:var(' + col.var + ')">' + col.label + '</h2>' +
-        '<span class="col-count">' + colOrders.length + '</span>' +
-        (col.id === "entregado" && colOrders.length ? '<button class="col-clear" data-clear="entregado">Vaciar</button>' : '');
+        '<span class="col-count">' + colOrders.length + '</span>';
       wrap.appendChild(head);
 
       var body = document.createElement("div");
@@ -838,10 +953,73 @@
       var waitEnd = starts.entregado || (o.status === "listo" ? now : null);
       if(waitEnd) rows.push({ label:"Esperando recogida", value: fmtStageMin(waitEnd - starts.listo), live: o.status === "listo" });
     }
-    if(starts.entregado){
-      rows.push({ label:"Finalizado hace", value: fmtStageMin(now - starts.entregado), live:true });
+    if(starts.entregado && starts.preparando){
+      // Solo se ve en el Historial (un pedido finalizado ya no está en el
+      // tablero en vivo): tiempo total, no "hace cuánto", que no aporta ahí.
+      rows.push({ label:"Tiempo total", value: fmtStageMin(starts.entregado - starts.preparando), live:false });
     }
     return rows;
+  }
+
+  // Construye el bloque de detalle de un pedido (artículos, descuento, pago,
+  // contacto, notas y tiempos por etapa) como HTML. Se usa tanto en la
+  // tarjeta del tablero como en el Historial, para no duplicar el marcado.
+  function buildDetailsHtml(o){
+    var h = "";
+
+    if(o.items && o.items.length){
+      h += '<div class="items">';
+      o.items.forEach(function(it){
+        h += '<div class="item-row"><span><span class="qty">' + escapeHtml(it.qty) + 'x</span> ' + escapeHtml(it.name) + '</span><span class="mono">' + escapeHtml(it.price||"") + '</span></div>';
+        if(it.detail) h += '<div class="item-detail">' + escapeHtml(it.detail) + '</div>';
+      });
+      h += '</div>';
+    }
+
+    if(o.condiments){
+      h += '<div class="cond-line">Soja/wasabi/jengibre: ' + escapeHtml(o.condiments) + '</div>';
+    }
+
+    if(o.discount && o.discount.amount > 0){
+      h += '<div class="subtotal-row"><span>Subtotal</span><span class="mono">' + escapeHtml(o.subtotal || fmtEuro(o.subtotalValue||0)) + '</span></div>';
+      var discText = o.discount.label ? escapeHtml(o.discount.label) :
+        (o.discount.type === "percent" ? "Descuento " + o.discount.value + "%" : "Descuento");
+      h += '<div class="discount-row"><span>🏷️ ' + discText + '</span><span class="mono">−' + fmtEuro(o.discount.amount) + '</span></div>';
+      h += '<div class="total-row no-line"><span>Total</span><span class="mono">' + escapeHtml(o.total) + '</span></div>';
+    } else if(o.total){
+      h += '<div class="total-row"><span>Total</span><span class="mono">' + escapeHtml(o.total) + '</span></div>';
+    }
+
+    if(o.mode){
+      h += '<div class="mode-chip">' + ((String(o.mode).toLowerCase().indexOf("domicilio") > -1 ? "🛵 " : "🏪 ") + escapeHtml(o.mode)) + '</div>';
+    }
+
+    if(o.payment && o.payment.method){
+      var isCash = /efectivo/i.test(o.payment.method);
+      var payTxt = (isCash ? "💶 " : /tarjeta/i.test(o.payment.method) ? "💳 " : "💰 ") + o.payment.method;
+      if(isCash){
+        if(o.payment.change) payTxt += " · Cambio: " + o.payment.change;
+        else if(o.payment.cash) payTxt += " · Paga con " + o.payment.cash + " (sin cambio)";
+      }
+      h += '<div class="pay-chip' + (isCash ? " cash" : "") + '">' + escapeHtml(payTxt) + '</div>';
+    }
+
+    var metaParts = [];
+    if(o.zone) metaParts.push('<div>📍 ' + escapeHtml(o.zone) + '</div>');
+    if(o.address) metaParts.push('<div>' + escapeHtml(o.address) + '</div>');
+    if(o.phone) metaParts.push('<div><a class="tel" href="tel:' + escapeHtml(String(o.phone).replace(/\s+/g,"")) + '">📞 ' + escapeHtml(o.phone) + '</a></div>');
+    if(metaParts.length) h += '<div class="meta">' + metaParts.join("") + '</div>';
+
+    if(o.notes) h += '<div class="notes-box">📝 ' + escapeHtml(o.notes) + '</div>';
+
+    var stageRows = buildStageRows(o);
+    if(stageRows.length){
+      h += '<div class="stage-times">' + stageRows.map(function(r){
+        return '<div class="st-row' + (r.live ? ' live' : '') + '"><span>' + escapeHtml(r.label) + '</span><span class="mono">' + escapeHtml(r.value) + '</span></div>';
+      }).join("") + '</div>';
+    }
+
+    return h;
   }
 
   function renderCard(o, col){
@@ -884,112 +1062,19 @@
     var details = document.createElement("div");
     details.className = "card-details";
     details.hidden = !expanded;
-
-    if(o.items && o.items.length){
-      var items = document.createElement("div");
-      items.className = "items";
-      o.items.forEach(function(it){
-        var row = document.createElement("div");
-        row.className = "item-row";
-        row.innerHTML = '<span><span class="qty">' + escapeHtml(it.qty) + 'x</span> ' + escapeHtml(it.name) + '</span><span class="mono">' + escapeHtml(it.price||"") + '</span>';
-        items.appendChild(row);
-        if(it.detail){
-          var d = document.createElement("div");
-          d.className = "item-detail";
-          d.textContent = it.detail;
-          items.appendChild(d);
-        }
-      });
-      details.appendChild(items);
-    }
-
-    if(o.condiments){
-      var cond = document.createElement("div");
-      cond.className = "cond-line";
-      cond.textContent = "Soja/wasabi/jengibre: " + o.condiments;
-      details.appendChild(cond);
-    }
-
-    if(o.discount && o.discount.amount > 0){
-      var subtotalRow = document.createElement("div");
-      subtotalRow.className = "subtotal-row";
-      subtotalRow.innerHTML = '<span>Subtotal</span><span class="mono">' + escapeHtml(o.subtotal || fmtEuro(o.subtotalValue||0)) + '</span>';
-      details.appendChild(subtotalRow);
-
-      var discRow = document.createElement("div");
-      discRow.className = "discount-row";
-      var discText = o.discount.label ? escapeHtml(o.discount.label) :
-        (o.discount.type === "percent" ? "Descuento " + o.discount.value + "%" : "Descuento");
-      discRow.innerHTML = '<span>🏷️ ' + discText + '</span><span class="mono">−' + fmtEuro(o.discount.amount) + '</span>';
-      details.appendChild(discRow);
-
-      var totalRow = document.createElement("div");
-      totalRow.className = "total-row no-line";
-      totalRow.innerHTML = '<span>Total</span><span class="mono">' + escapeHtml(o.total) + '</span>';
-      details.appendChild(totalRow);
-    } else if(o.total){
-      var totalRowPlain = document.createElement("div");
-      totalRowPlain.className = "total-row";
-      totalRowPlain.innerHTML = '<span>Total</span><span class="mono">' + escapeHtml(o.total) + '</span>';
-      details.appendChild(totalRowPlain);
-    }
-
-    if(o.mode){
-      var modeChip = document.createElement("div");
-      modeChip.className = "mode-chip";
-      modeChip.textContent = (String(o.mode).toLowerCase().indexOf("domicilio") > -1 ? "🛵 " : "🏪 ") + o.mode;
-      details.appendChild(modeChip);
-    }
-
-    if(o.payment && o.payment.method){
-      var isCash = /efectivo/i.test(o.payment.method);
-      var payChip = document.createElement("div");
-      payChip.className = "pay-chip" + (isCash ? " cash" : "");
-      var payTxt = (isCash ? "💶 " : /tarjeta/i.test(o.payment.method) ? "💳 " : "💰 ") + o.payment.method;
-      if(isCash){
-        if(o.payment.change) payTxt += " · Cambio: " + o.payment.change;
-        else if(o.payment.cash) payTxt += " · Paga con " + o.payment.cash + " (sin cambio)";
-      }
-      payChip.textContent = payTxt;
-      details.appendChild(payChip);
-    }
-
-    var metaParts = [];
-    if(o.zone) metaParts.push('<div>📍 ' + escapeHtml(o.zone) + '</div>');
-    if(o.address) metaParts.push('<div>' + escapeHtml(o.address) + '</div>');
-    if(o.phone) metaParts.push('<div><a class="tel" href="tel:' + escapeHtml(String(o.phone).replace(/\s+/g,"")) + '">📞 ' + escapeHtml(o.phone) + '</a></div>');
-    if(metaParts.length){
-      var meta = document.createElement("div");
-      meta.className = "meta";
-      meta.innerHTML = metaParts.join("");
-      details.appendChild(meta);
-    }
-
-    if(o.notes){
-      var notes = document.createElement("div");
-      notes.className = "notes-box";
-      notes.textContent = "📝 " + o.notes;
-      details.appendChild(notes);
-    }
-
-    var stageRows = buildStageRows(o);
-    if(stageRows.length){
-      var stageBox = document.createElement("div");
-      stageBox.className = "stage-times";
-      stageBox.innerHTML = stageRows.map(function(r){
-        return '<div class="st-row' + (r.live ? ' live' : '') + '"><span>' + escapeHtml(r.label) + '</span><span class="mono">' + escapeHtml(r.value) + '</span></div>';
-      }).join("");
-      details.appendChild(stageBox);
-    }
-
+    details.innerHTML = buildDetailsHtml(o);
     card.appendChild(details);
 
     var idx = COLUMNS.findIndex(function(c){ return c.id === o.status; });
     var actions = document.createElement("div");
     actions.className = "card-actions";
     var html = "";
-    if(idx > 0) html += '<button data-move="' + COLUMNS[idx-1].id + '" data-id="' + o.id + '">‹ ' + COLUMNS[idx-1].short + '</button>';
-    if(idx < COLUMNS.length-1) html += '<button class="primary" data-move="' + COLUMNS[idx+1].id + '" data-id="' + o.id + '">' + COLUMNS[idx+1].short + ' ›</button>';
+    // Flujo de una sola dirección: nunca se ofrece volver a una etapa anterior.
+    if(idx < COLUMNS.length-1){
+      html += '<button class="primary" data-move="' + COLUMNS[idx+1].id + '" data-id="' + o.id + '">' + COLUMNS[idx+1].short + ' ›</button>';
+    } else {
+      html += '<button class="primary" data-move="' + FINAL_STATUS + '" data-id="' + o.id + '">✓ Finalizar</button>';
+    }
     if(o.status === INITIAL_STATUS){
       html += '<button class="icon-btn" data-print="' + o.id + '" aria-label="Imprimir comanda" title="Imprimir comanda">🖨️</button>';
     }
@@ -1090,11 +1175,12 @@
   }
 
   /* ---------------- data layer (Google Sheets vía Apps Script) ---------------- */
-  function refresh(){
+  function refresh(isRetry){
     setSync("busy");
     return jsonp({ action: "list" }).then(function(res){
       if(res && res.ok){
         orders = res.orders || [];
+        lastStatsToday = res.statsToday || null;
         renderBoard();
         setSync("ok");
       } else {
@@ -1102,6 +1188,11 @@
         showToast("Error leyendo la Hoja: " + (res && res.error || "desconocido"), true);
       }
     }).catch(function(){
+      // Un fallo puntual (arranque en frío del script, red lenta) no debe
+      // mostrarse como error de inmediato: se reintenta una vez en silencio.
+      if(!isRetry){
+        return new Promise(function(resolve){ setTimeout(resolve, 1500); }).then(function(){ return refresh(true); });
+      }
       setSync("err");
       showToast("Sin conexión con Google Sheets — reintentando…", true);
     });
@@ -1109,6 +1200,7 @@
 
   function createOrder(order){
     orders.unshift(order); // optimista
+    if(lastStatsToday){ lastStatsToday = { count: lastStatsToday.count + 1, total: round2(lastStatsToday.total + (order.totalValue||0)) }; }
     renderBoard();
     setSync("busy");
     return jsonp({ action: "create", payload: JSON.stringify(order) }).then(function(res){
@@ -1126,20 +1218,22 @@
     var payload = { action: "move", id: id, status: status };
     if(o){
       o.status = status;
-      var targetIdx = COLUMNS.findIndex(function(c){ return c.id === status; });
       var now = Date.now();
-      COLUMNS.forEach(function(c, i){
-        var field = STAGE_TS_FIELD[c.id];
-        if(!field) return;
-        if(i === targetIdx){
-          o[field] = now;
-          payload[field] = now;
-        } else if(i > targetIdx && o[field]){
-          // volver a una etapa anterior invalida los tiempos de las etapas posteriores
-          o[field] = null;
-          payload[field] = "";
-        }
-      });
+      if(status === FINAL_STATUS){
+        o.tsEntregado = now;
+        payload.tsEntregado = now;
+      } else {
+        var targetIdx = COLUMNS.findIndex(function(c){ return c.id === status; });
+        COLUMNS.forEach(function(c, i){
+          var field = STAGE_TS_FIELD[c.id];
+          if(i === targetIdx){ o[field] = now; payload[field] = now; }
+        });
+      }
+    }
+    if(status === FINAL_STATUS){
+      // Un pedido finalizado ya no puede volver atrás: sale del tablero en
+      // vivo y queda accesible desde el Historial.
+      orders = orders.filter(function(x){ return x.id !== id; });
     }
     renderBoard();
     setSync("busy");
@@ -1212,6 +1306,7 @@
   var fPayMethod = document.getElementById("fPayMethod");
   var fPayCash = document.getElementById("fPayCash");
   var fPayChange = document.getElementById("fPayChange");
+  var fPromoSelect = document.getElementById("fPromoSelect");
 
   function updateDiscountPreview(){
     var subtotal = parseEuro(fTotal.value);
@@ -1238,6 +1333,79 @@
   fDiscValue.addEventListener("input", updateDiscountPreview);
   fTotal.addEventListener("input", updateDiscountPreview);
 
+  /* ---------------- promociones de descuento (Configuración) ----------------
+     Se guardan en su propia pestaña de la Hoja ("Promos") para que estén
+     disponibles en cualquier dispositivo, igual que los pedidos. */
+  var promos = [];
+  function loadPromos(){
+    return jsonp({ action: "list_promos" }).then(function(res){
+      promos = (res && res.ok && res.promos) || [];
+      renderPromoSelect();
+      renderPromoConfigList();
+    }).catch(function(){ /* sin conexión: se sigue pudiendo escribir el descuento a mano */ });
+  }
+  function renderPromoSelect(){
+    var current = fPromoSelect.value;
+    fPromoSelect.innerHTML = '<option value="">— Elegir promoción guardada (opcional) —</option>' +
+      promos.map(function(p){
+        var suffix = p.tipo === "percent" ? "%" : "€";
+        return '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.nombre) + ' (' + p.valor + suffix + ')</option>';
+      }).join("");
+    fPromoSelect.value = promos.some(function(p){ return p.id === current; }) ? current : "";
+  }
+  function renderPromoConfigList(){
+    var list = document.getElementById("promoList");
+    if(!promos.length){
+      list.innerHTML = '<p class="config-hint" style="margin:0">Todavía no hay promociones guardadas.</p>';
+      return;
+    }
+    list.innerHTML = promos.map(function(p){
+      var suffix = p.tipo === "percent" ? "% descuento" : "€ de descuento";
+      return '<div class="promo-row"><span class="promo-name">' + escapeHtml(p.nombre) + '</span>' +
+        '<span class="promo-val">' + p.valor + suffix + '</span>' +
+        '<button type="button" data-del-promo="' + escapeHtml(p.id) + '" aria-label="Eliminar promoción" title="Eliminar">✕</button></div>';
+    }).join("");
+  }
+  fPromoSelect.addEventListener("change", function(){
+    var p = promos.find(function(x){ return x.id === fPromoSelect.value; });
+    if(!p) return;
+    fDiscType.value = p.tipo;
+    fDiscValue.disabled = false;
+    fDiscValue.value = p.valor;
+    fDiscLabel.disabled = false;
+    fDiscLabel.value = p.nombre;
+    updateDiscountPreview();
+  });
+  document.getElementById("promoList").addEventListener("click", function(e){
+    var btn = e.target.closest("[data-del-promo]");
+    if(!btn) return;
+    var id = btn.getAttribute("data-del-promo");
+    if(!confirm("¿Eliminar esta promoción guardada?")) return;
+    promos = promos.filter(function(p){ return p.id !== id; });
+    renderPromoConfigList();
+    renderPromoSelect();
+    jsonp({ action: "delete_promo", id: id }).catch(function(){});
+  });
+  document.getElementById("btnAddPromo").addEventListener("click", function(){
+    var nameEl = document.getElementById("promoName");
+    var typeEl = document.getElementById("promoType");
+    var valueEl = document.getElementById("promoValue");
+    var nombre = nameEl.value.trim();
+    var valor = parseFloat(valueEl.value);
+    if(!nombre || isNaN(valor) || valor <= 0){
+      showToast("Ponle un nombre y un valor válido a la promoción", true);
+      return;
+    }
+    var promo = { id: "p" + Date.now() + Math.random().toString(36).slice(2,6), nombre: nombre, tipo: typeEl.value, valor: valor };
+    promos.push(promo);
+    renderPromoConfigList();
+    renderPromoSelect();
+    nameEl.value = ""; valueEl.value = "";
+    jsonp({ action: "save_promo", payload: JSON.stringify(promo) }).then(function(res){
+      if(!res || !res.ok) showToast("No se pudo guardar la promoción en la Hoja", true);
+    }).catch(function(){ showToast("Sin conexión — la promoción no se guardó en la Hoja", true); });
+  });
+
   function openModal(){
     overlay.classList.add("show");
     pasteBox.value = "";
@@ -1251,6 +1419,7 @@
     fDiscLabel.value = "";
     fDiscLabel.disabled = true;
     discPreview.hidden = true;
+    fPromoSelect.value = "";
     fPayMethod.value = "";
     fPayCash.value = "";
     fPayChange.value = "";
@@ -1261,7 +1430,95 @@
   document.getElementById("btnNew").addEventListener("click", openModal);
   document.getElementById("btnClose").addEventListener("click", closeModal);
   overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
-  document.addEventListener("keydown", function(e){ if(e.key === "Escape" && overlay.classList.contains("show")) closeModal(); });
+  document.addEventListener("keydown", function(e){
+    if(e.key !== "Escape") return;
+    if(overlay.classList.contains("show")) closeModal();
+    else if(configOverlay.classList.contains("show")) closeConfig();
+    else if(histOverlay.classList.contains("show")) histOverlay.classList.remove("show");
+  });
+
+  /* ---------------- configuración ---------------- */
+  var configOverlay = document.getElementById("configOverlay");
+  function openConfig(){ configOverlay.classList.add("show"); loadPromos(); }
+  function closeConfig(){ configOverlay.classList.remove("show"); }
+  document.getElementById("btnConfig").addEventListener("click", openConfig);
+  document.getElementById("btnConfigClose").addEventListener("click", closeConfig);
+  configOverlay.addEventListener("click", function(e){ if(e.target === configOverlay) closeConfig(); });
+
+  /* ---------------- historial ---------------- */
+  var histOverlay = document.getElementById("histOverlay");
+  var histDateSelect = document.getElementById("histDateSelect");
+  var histSummary = document.getElementById("histSummary");
+  var histList = document.getElementById("histList");
+
+  function openHistory(fecha){
+    histOverlay.classList.add("show");
+    histList.innerHTML = '<div class="col-empty">Cargando…</div>';
+    histSummary.textContent = "";
+    jsonp({ action: "history", fecha: fecha || "" }).then(function(res){
+      if(!res || !res.ok){
+        histList.innerHTML = '<div class="col-empty">No se pudo cargar el historial. Comprueba que has publicado la última versión del script de Apps Script.</div>';
+        return;
+      }
+      renderHistory(res);
+    }).catch(function(){
+      histList.innerHTML = '<div class="col-empty">Sin conexión — no se pudo cargar el historial.</div>';
+    });
+  }
+
+  function renderHistory(res){
+    var dates = res.dates || [];
+    histDateSelect.innerHTML = dates.length
+      ? dates.map(function(d){ return '<option value="' + escapeHtml(d) + '"' + (d === res.fecha ? " selected" : "") + '>' + escapeHtml(d) + '</option>'; }).join("")
+      : '<option value="">Sin pedidos finalizados todavía</option>';
+
+    var list = res.orders || [];
+    var total = 0;
+    list.forEach(function(o){ total += o.totalValue || 0; });
+    histSummary.textContent = list.length + (list.length === 1 ? " pedido · " : " pedidos · ") + fmtEuro(total);
+
+    histList.innerHTML = "";
+    if(!list.length){
+      histList.innerHTML = '<div class="col-empty">Sin pedidos finalizados este día</div>';
+      return;
+    }
+    list.forEach(function(o){
+      var item = document.createElement("div");
+      item.className = "hist-item";
+      var payIcon = (o.payment && o.payment.method) ? (/efectivo/i.test(o.payment.method) ? "💶" : /tarjeta/i.test(o.payment.method) ? "💳" : "💰") : "";
+      item.innerHTML =
+        '<div class="hist-row">' +
+          '<span class="hist-time mono">' + escapeHtml(o.hora || "") + '</span>' +
+          '<span class="hist-name">' + escapeHtml(o.name || "Cliente sin nombre") + '</span>' +
+          '<span class="hist-badge">' + payIcon + '</span>' +
+          '<span class="mono hist-total">' + escapeHtml(o.total || fmtEuro(o.totalValue||0)) + '</span>' +
+          '<button type="button" data-hist-print="' + o.id + '" aria-label="Reimprimir" title="Reimprimir">🖨️</button>' +
+          '<button type="button" class="hist-toggle" aria-label="Ver detalle">▾</button>' +
+        '</div>' +
+        '<div class="hist-details" hidden>' + buildDetailsHtml(o) + '</div>';
+      var det = item.querySelector(".hist-details");
+      var tgl = item.querySelector(".hist-toggle");
+      function toggleDet(){
+        det.hidden = !det.hidden;
+        tgl.textContent = det.hidden ? "▾" : "▴";
+      }
+      item.querySelector(".hist-row").addEventListener("click", function(e){
+        if(e.target.closest("button")) return;
+        toggleDet();
+      });
+      tgl.addEventListener("click", function(e){ e.stopPropagation(); toggleDet(); });
+      item.querySelector("[data-hist-print]").addEventListener("click", function(e){
+        e.stopPropagation();
+        printTicket(o);
+      });
+      histList.appendChild(item);
+    });
+  }
+
+  document.getElementById("btnHist").addEventListener("click", function(){ openHistory(); });
+  document.getElementById("btnHistClose").addEventListener("click", function(){ histOverlay.classList.remove("show"); });
+  histOverlay.addEventListener("click", function(e){ if(e.target === histOverlay) histOverlay.classList.remove("show"); });
+  histDateSelect.addEventListener("change", function(){ openHistory(histDateSelect.value); });
 
   function renderItemsPreview(items){
     itemsPreview.innerHTML = "";
