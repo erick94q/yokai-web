@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Comandas YOKAI</title>
+<link rel="manifest" href="comandas-manifest.json">
+<meta name="theme-color" content="#2932D9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Comandas">
+<link rel="apple-touch-icon" href="img/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -466,6 +473,9 @@
       <select id="fPromoSelect">
         <option value="">— Elegir promoción guardada (opcional) —</option>
       </select>
+      <select id="fDiscTarget" disabled style="margin-top:8px">
+        <option value="order">Aplicar a: todo el pedido</option>
+      </select>
       <div class="field-row" style="margin-top:8px">
         <select id="fDiscType">
           <option value="none">Sin descuento</option>
@@ -568,15 +578,18 @@
     return;
   }
 
-  // "entregado" ya no es una columna del tablero: un pedido finalizado sale
-  // del tablero en vivo y pasa al Historial (no se puede volver atrás).
+  // 3 etapas en vivo, siempre hacia adelante (nunca se puede volver atrás).
+  // "Entregado" es la última columna del tablero, con su propio tiempo; solo
+  // al pulsar "Archivar" desde ahí el pedido sale del tablero y pasa al
+  // Historial (estado "archivado").
   var COLUMNS = [
     { id:"preparando",label:"Preparando",         short:"Preparando", var:"--st-prep" },
-    { id:"listo",     label:"Esperando recogida", short:"Esperando",  var:"--st-listo" }
+    { id:"listo",     label:"Esperando recogida", short:"Esperando",  var:"--st-listo" },
+    { id:"entregado", label:"Entregado",          short:"Entregado",  var:"--st-entregado" }
   ];
   var INITIAL_STATUS = COLUMNS[0].id;
-  var FINAL_STATUS = "entregado";
-  var STAGE_TS_FIELD = { preparando:"tsPreparando", listo:"tsListo", entregado:"tsEntregado" };
+  var ARCHIVE_STATUS = "archivado";
+  var STAGE_TS_FIELD = { preparando:"tsPreparando", listo:"tsListo", entregado:"tsEntregado", archivado:"tsArchivado" };
 
   /* ---------------- lock screen ---------------- */
   var lockWrap = document.getElementById("lockWrap");
@@ -943,7 +956,12 @@
 
   function buildStageRows(o){
     var now = Date.now();
-    var starts = { preparando: o.tsPreparando || o.createdAt, listo: o.tsListo || null, entregado: o.tsEntregado || null };
+    var starts = {
+      preparando: o.tsPreparando || o.createdAt,
+      listo: o.tsListo || null,
+      entregado: o.tsEntregado || null,
+      archivado: o.tsArchivado || null
+    };
     var rows = [];
     if(starts.preparando){
       var prepEnd = starts.listo || (o.status === "preparando" ? now : null);
@@ -953,10 +971,14 @@
       var waitEnd = starts.entregado || (o.status === "listo" ? now : null);
       if(waitEnd) rows.push({ label:"Esperando recogida", value: fmtStageMin(waitEnd - starts.listo), live: o.status === "listo" });
     }
-    if(starts.entregado && starts.preparando){
-      // Solo se ve en el Historial (un pedido finalizado ya no está en el
+    if(starts.entregado){
+      var entregadoEnd = starts.archivado || (o.status === "entregado" ? now : null);
+      if(entregadoEnd) rows.push({ label:"Entregado", value: fmtStageMin(entregadoEnd - starts.entregado), live: o.status === "entregado" });
+    }
+    if(starts.archivado && starts.preparando){
+      // Solo se ve en el Historial (un pedido archivado ya no está en el
       // tablero en vivo): tiempo total, no "hace cuánto", que no aporta ahí.
-      rows.push({ label:"Tiempo total", value: fmtStageMin(starts.entregado - starts.preparando), live:false });
+      rows.push({ label:"Tiempo total", value: fmtStageMin(starts.archivado - starts.preparando), live:false });
     }
     return rows;
   }
@@ -984,6 +1006,7 @@
       h += '<div class="subtotal-row"><span>Subtotal</span><span class="mono">' + escapeHtml(o.subtotal || fmtEuro(o.subtotalValue||0)) + '</span></div>';
       var discText = o.discount.label ? escapeHtml(o.discount.label) :
         (o.discount.type === "percent" ? "Descuento " + o.discount.value + "%" : "Descuento");
+      if(o.discount.target === "item" && o.discount.itemName) discText = escapeHtml(o.discount.itemName) + ": " + discText;
       h += '<div class="discount-row"><span>🏷️ ' + discText + '</span><span class="mono">−' + fmtEuro(o.discount.amount) + '</span></div>';
       h += '<div class="total-row no-line"><span>Total</span><span class="mono">' + escapeHtml(o.total) + '</span></div>';
     } else if(o.total){
@@ -1073,7 +1096,7 @@
     if(idx < COLUMNS.length-1){
       html += '<button class="primary" data-move="' + COLUMNS[idx+1].id + '" data-id="' + o.id + '">' + COLUMNS[idx+1].short + ' ›</button>';
     } else {
-      html += '<button class="primary" data-move="' + FINAL_STATUS + '" data-id="' + o.id + '">✓ Finalizar</button>';
+      html += '<button class="primary" data-move="' + ARCHIVE_STATUS + '" data-id="' + o.id + '">✓ Archivar</button>';
     }
     if(o.status === INITIAL_STATUS){
       html += '<button class="icon-btn" data-print="' + o.id + '" aria-label="Imprimir comanda" title="Imprimir comanda">🖨️</button>';
@@ -1140,6 +1163,7 @@
     if(o.discount && o.discount.amount > 0){
       h += '<div class="t-row"><span>Subtotal</span><span>' + escapeHtml(o.subtotal||"") + '</span></div>';
       var discText = o.discount.label ? o.discount.label : "Descuento";
+      if(o.discount.target === "item" && o.discount.itemName) discText = o.discount.itemName + ": " + discText;
       h += '<div class="t-row"><span>' + escapeHtml(discText) + '</span><span>−' + fmtEuro(o.discount.amount) + '</span></div>';
     }
     h += '<div class="t-row t-big"><span>TOTAL</span><span>' + escapeHtml(o.total||"") + '</span></div>';
@@ -1219,20 +1243,12 @@
     if(o){
       o.status = status;
       var now = Date.now();
-      if(status === FINAL_STATUS){
-        o.tsEntregado = now;
-        payload.tsEntregado = now;
-      } else {
-        var targetIdx = COLUMNS.findIndex(function(c){ return c.id === status; });
-        COLUMNS.forEach(function(c, i){
-          var field = STAGE_TS_FIELD[c.id];
-          if(i === targetIdx){ o[field] = now; payload[field] = now; }
-        });
-      }
+      var field = STAGE_TS_FIELD[status];
+      if(field){ o[field] = now; payload[field] = now; }
     }
-    if(status === FINAL_STATUS){
-      // Un pedido finalizado ya no puede volver atrás: sale del tablero en
-      // vivo y queda accesible desde el Historial.
+    if(status === ARCHIVE_STATUS){
+      // Archivar ya no puede deshacerse: sale del tablero en vivo y queda
+      // accesible desde el Historial.
       orders = orders.filter(function(x){ return x.id !== id; });
     }
     renderBoard();
@@ -1307,30 +1323,61 @@
   var fPayCash = document.getElementById("fPayCash");
   var fPayChange = document.getElementById("fPayChange");
   var fPromoSelect = document.getElementById("fPromoSelect");
+  var fDiscTarget = document.getElementById("fDiscTarget");
+
+  // El descuento se puede aplicar a todo el pedido (por defecto) o a un
+  // artículo concreto — las opciones de "artículo" se rellenan al analizar
+  // el pedido, según lo que se haya reconocido en PLATOS.
+  function renderDiscTargetOptions(items){
+    var current = fDiscTarget.value;
+    var opts = '<option value="order">Aplicar a: todo el pedido</option>' +
+      (items || []).map(function(it, i){
+        return '<option value="' + i + '">Aplicar a: ' + escapeHtml(it.name || ("Artículo " + (i+1))) + '</option>';
+      }).join("");
+    fDiscTarget.innerHTML = opts;
+    fDiscTarget.value = (current && fDiscTarget.querySelector('option[value="' + current + '"]')) ? current : "order";
+  }
 
   function updateDiscountPreview(){
-    var subtotal = parseEuro(fTotal.value);
     var type = fDiscType.value;
-    if(type === "none" || subtotal <= 0){
+    if(type === "none"){
       discPreview.hidden = true;
       return;
     }
     var value = parseFloat(fDiscValue.value) || 0;
-    var amount = calcDiscountAmount(subtotal, type, value);
-    if(amount > subtotal) amount = subtotal;
-    var finalTotal = round2(Math.max(0, subtotal - amount));
-    discPreview.hidden = false;
-    discPreview.textContent = "Subtotal " + fmtEuro(subtotal) + "  →  −" + fmtEuro(amount) + "  →  Total " + fmtEuro(finalTotal);
+    var target = fDiscTarget.value;
+    if(target === "order"){
+      var subtotal = parseEuro(fTotal.value);
+      if(subtotal <= 0){ discPreview.hidden = true; return; }
+      var amount = calcDiscountAmount(subtotal, type, value);
+      if(amount > subtotal) amount = subtotal;
+      var finalTotal = round2(Math.max(0, subtotal - amount));
+      discPreview.hidden = false;
+      discPreview.textContent = "Subtotal " + fmtEuro(subtotal) + "  →  −" + fmtEuro(amount) + "  →  Total " + fmtEuro(finalTotal);
+    } else {
+      var idx = parseInt(target, 10);
+      var item = currentParsed && currentParsed.items[idx];
+      if(!item){ discPreview.hidden = true; return; }
+      var itemPrice = parseEuro(item.price);
+      var itemAmount = calcDiscountAmount(itemPrice, type, value);
+      if(itemAmount > itemPrice) itemAmount = itemPrice;
+      var orderSubtotal = parseEuro(fTotal.value);
+      var orderFinal = round2(Math.max(0, orderSubtotal - itemAmount));
+      discPreview.hidden = false;
+      discPreview.textContent = (item.name || "Artículo") + ": −" + fmtEuro(itemAmount) + "  →  Total del pedido " + fmtEuro(orderFinal);
+    }
   }
 
   fDiscType.addEventListener("change", function(){
     var isDisc = fDiscType.value !== "none";
     fDiscValue.disabled = !isDisc;
     fDiscLabel.disabled = !isDisc;
+    fDiscTarget.disabled = !isDisc;
     if(!isDisc){ fDiscValue.value = ""; fDiscLabel.value = ""; }
     updateDiscountPreview();
   });
   fDiscValue.addEventListener("input", updateDiscountPreview);
+  fDiscTarget.addEventListener("change", updateDiscountPreview);
   fTotal.addEventListener("input", updateDiscountPreview);
 
   /* ---------------- promociones de descuento (Configuración) ----------------
@@ -1374,6 +1421,8 @@
     fDiscValue.value = p.valor;
     fDiscLabel.disabled = false;
     fDiscLabel.value = p.nombre;
+    fDiscTarget.disabled = false;
+    fDiscTarget.value = "order"; // las promociones guardadas son de todo el pedido
     updateDiscountPreview();
   });
   document.getElementById("promoList").addEventListener("click", function(e){
@@ -1418,6 +1467,8 @@
     fDiscValue.disabled = true;
     fDiscLabel.value = "";
     fDiscLabel.disabled = true;
+    fDiscTarget.disabled = true;
+    renderDiscTargetOptions([]);
     discPreview.hidden = true;
     fPromoSelect.value = "";
     fPayMethod.value = "";
@@ -1560,6 +1611,7 @@
     editFields.hidden = false;
     btnConfirm.hidden = false;
     renderItemsPreview(parsed.items);
+    renderDiscTargetOptions(parsed.items);
     fTotal.value = parsed.total;
     document.getElementById("fMode").value = parsed.mode;
     document.getElementById("fName").value = parsed.name;
@@ -1612,16 +1664,29 @@
     var discType = fDiscType.value;
     var discValueRaw = parseFloat(fDiscValue.value) || 0;
     var discLabel = fDiscLabel.value.trim();
+    var discTarget = fDiscTarget.value || "order";
     var discount = null;
     var totalValue = subtotalValue;
     var totalDisplay = totalStr || fmtEuro(0);
 
     if(discType !== "none" && discValueRaw > 0){
-      var amount = calcDiscountAmount(subtotalValue, discType, discValueRaw);
-      if(amount > subtotalValue) amount = subtotalValue;
-      totalValue = round2(Math.max(0, subtotalValue - amount));
-      totalDisplay = fmtEuro(totalValue);
-      discount = { type: discType, value: discValueRaw, label: discLabel, amount: amount };
+      if(discTarget === "order"){
+        var amount = calcDiscountAmount(subtotalValue, discType, discValueRaw);
+        if(amount > subtotalValue) amount = subtotalValue;
+        totalValue = round2(Math.max(0, subtotalValue - amount));
+        totalDisplay = fmtEuro(totalValue);
+        discount = { type: discType, value: discValueRaw, label: discLabel, amount: amount, target: "order", itemName: "" };
+      } else {
+        var itemIdx = parseInt(discTarget, 10);
+        var targetItem = items[itemIdx];
+        var itemName = targetItem ? (targetItem.name || "") : "";
+        var itemPrice = targetItem ? parseEuro(targetItem.price) : 0;
+        var itemAmount = calcDiscountAmount(itemPrice, discType, discValueRaw);
+        if(itemAmount > itemPrice) itemAmount = itemPrice;
+        totalValue = round2(Math.max(0, subtotalValue - itemAmount));
+        totalDisplay = fmtEuro(totalValue);
+        discount = { type: discType, value: discValueRaw, label: discLabel, amount: itemAmount, target: "item", itemName: itemName };
+      }
     }
 
     var payMethodVal = fPayMethod.value.trim();
@@ -1654,7 +1719,8 @@
       hora: fmtHora(createdAt),
       tsPreparando: createdAt,
       tsListo: null,
-      tsEntregado: null
+      tsEntregado: null,
+      tsArchivado: null
     };
     closeModal();
     beep();
