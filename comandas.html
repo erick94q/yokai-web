@@ -757,7 +757,7 @@
     if(o.mode){
       var modeChip = document.createElement("div");
       modeChip.className = "mode-chip";
-      modeChip.textContent = (o.mode.toLowerCase().indexOf("domicilio") > -1 ? "🛵 " : "🏪 ") + o.mode;
+      modeChip.textContent = (String(o.mode).toLowerCase().indexOf("domicilio") > -1 ? "🛵 " : "🏪 ") + o.mode;
       card.appendChild(modeChip);
     }
 
@@ -777,7 +777,7 @@
     var metaParts = [];
     if(o.zone) metaParts.push('<div>📍 ' + escapeHtml(o.zone) + '</div>');
     if(o.address) metaParts.push('<div>' + escapeHtml(o.address) + '</div>');
-    if(o.phone) metaParts.push('<div><a class="tel" href="tel:' + escapeHtml(o.phone.replace(/\s+/g,"")) + '">📞 ' + escapeHtml(o.phone) + '</a></div>');
+    if(o.phone) metaParts.push('<div><a class="tel" href="tel:' + escapeHtml(String(o.phone).replace(/\s+/g,"")) + '">📞 ' + escapeHtml(o.phone) + '</a></div>');
     if(metaParts.length){
       var meta = document.createElement("div");
       meta.className = "meta";
