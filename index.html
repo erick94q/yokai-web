@@ -494,6 +494,11 @@ section,main,.section-head{position:relative;z-index:2}
 }
 .mediodia-select:focus{border-color:var(--blue);outline:none}
 .mediodia-select option:disabled{color:var(--dim)}
+.mediodia-select:disabled{background:var(--fog,#eef);color:var(--dim);cursor:not-allowed}
+.mediodia-avail-note{
+  margin:-8px 0 18px;padding:10px 12px;border-radius:10px;
+  background:var(--blue-soft);color:var(--blue);font-weight:700;font-size:13px;line-height:1.5;
+}
 .mediodia-foot{
   margin-top:20px;padding-top:16px;border-top:2px solid var(--line);
   display:flex;align-items:center;gap:16px;flex-wrap:wrap;
@@ -1136,7 +1141,8 @@ footer{
   </div>
   <div class="mediodia-wrap reveal">
     <div class="mediodia-card">
-      <p class="mediodia-sub">Entrante + principal + bebida a elegir. Postre: <span id="mediodiaDessert">Mochi</span> incluido. Solo en horario de mediodía.</p>
+      <p class="mediodia-sub">Entrante + principal + bebida a elegir. Postre: <span id="mediodiaDessert">Mochi</span> incluido. De lunes a viernes, en horario de mediodía.</p>
+      <p class="mediodia-avail-note" id="mediodiaAvailNote" hidden></p>
       <div class="mediodia-grid">
         <div class="mediodia-field">
           <label for="mediodiaEntrante">Entrante</label>
@@ -1409,13 +1415,15 @@ const POKE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSf8GETY
 
 /* MEDIODIA_SHEET_URL: enlace CSV de otra pestaña nueva de tu hoja de
    Google, p.ej. "Menú Mediodía", con columnas Grupo | Nombre | Disponible
-   (Grupo: Entrante / Principal / Bebida / Precio / Postre — en la fila
-   de Precio, Nombre lleva el importe, ej. "15,90"; en la fila de Postre,
-   Nombre lleva el nombre del postre actual, ej. "Mochi", y Disponible no
-   se usa en esas dos). Desde ahí cambias cada día qué entrantes,
-   principales y bebidas entran en el menú de mediodía, los marcas como
-   agotados, o ajustas el precio o el postre, sin tocar el código. Si se
-   deja vacío, se usan los valores de ejemplo de más abajo (DEFAULT_MEDIODIA). */
+   (Grupo: Entrante / Principal / Precio / Postre — en la fila de Precio,
+   Nombre lleva el importe, ej. "15,90"; en la fila de Postre, Nombre
+   lleva el nombre del postre actual, ej. "Mochi", y Disponible no se usa
+   en esas dos). Desde ahí cambias cada día qué entrantes y principales
+   entran en el menú de mediodía, los marcas como agotados, o ajustas el
+   precio o el postre, sin tocar el código. Si se deja vacío, se usan los
+   valores de ejemplo de más abajo (DEFAULT_MEDIODIA). La bebida incluida
+   no se gestiona aquí: sale sola de la carta de bebidas de la web (ver
+   MEDIODIA_EXCLUDED_DRINKS más abajo). */
 const MEDIODIA_SHEET_URL = "";
 
 const MARQUEE_ITEMS = [
@@ -1591,9 +1599,16 @@ const DEFAULT_MEDIODIA = {
   principales: [
     "Donburi chashu don", "Donburi karaage", "Yakisoba mixto",
     "Poke yokai", "Poke blue dragon", "Alaska roll", "Tuna roll", "California roll"
-  ],
-  bebidas: ["Agua", "Refresco", "Cerveza"]
+  ]
 };
+
+/* La bebida incluida en el Menú Mediodía no tiene su propia lista: se
+   toma de las bebidas reales de la carta (ALL_DRINKS, ver más abajo),
+   para no tener que mantener dos listas de bebidas. MEDIODIA_EXCLUDED_DRINKS
+   son los nombres (tal cual aparecen en la carta) que NO se ofrecen
+   gratis con el menú — añade aquí cualquier otra bebida que quieras
+   excluir, sin tocar el resto del código. */
+const MEDIODIA_EXCLUDED_DRINKS = ["Asahi"];
 
 /* Convierte una lista de nombres sueltos (los valores de ejemplo) al
    mismo formato {name, available} que llega de la hoja de Google. */
@@ -1641,10 +1656,9 @@ function normalizeMediodiaData(sheet){
   const s = sheet || {};
   const entrantes = (s.entrantes && s.entrantes.length) ? s.entrantes : toItems(DEFAULT_MEDIODIA.entrantes);
   const principales = (s.principales && s.principales.length) ? s.principales : toItems(DEFAULT_MEDIODIA.principales);
-  const bebidas = (s.bebidas && s.bebidas.length) ? s.bebidas : toItems(DEFAULT_MEDIODIA.bebidas);
   const price = (s.price != null && !isNaN(s.price) && s.price > 0) ? s.price : DEFAULT_MEDIODIA.price;
   const dessert = (s.dessert && s.dessert.trim()) ? s.dessert.trim() : DEFAULT_MEDIODIA.dessert;
-  return { price, dessert, entrantes, principales, bebidas };
+  return { price, dessert, entrantes, principales };
 }
 
 let MEDIODIA = normalizeMediodiaData(null);
@@ -1803,8 +1817,8 @@ function buildMediodiaFromSheet(rows){
   const head = rows[0].map(h => slug(h));
   const idx = name => head.indexOf(name);
   const col = (r, name) => { const i = idx(name); return i >= 0 ? (r[i] || "").trim() : ""; };
-  const GROUP_KEY = { "entrante": "entrantes", "principal": "principales", "bebida": "bebidas" };
-  const out = { entrantes: [], principales: [], bebidas: [], price: null, dessert: null };
+  const GROUP_KEY = { "entrante": "entrantes", "principal": "principales" };
+  const out = { entrantes: [], principales: [], price: null, dessert: null };
   for(const r of rows.slice(1)){
     const grupo = slug(col(r, "grupo"));
     const nombre = col(r, "nombre");
@@ -1994,6 +2008,10 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
     });
   }, { rootMargin: "600px 0px" });
   document.querySelectorAll(".lazy-video[data-src]").forEach(v => videoObserver.observe(v));
+
+  /* La bebida incluida en el Menú Mediodía se toma de ALL_DRINKS (recién
+     actualizado arriba), así que su desplegable se refresca aquí mismo. */
+  if(typeof mediodiaConfig !== "undefined") mediodiaConfig.reload();
 }
 
 /* ---- Carga: hoja de Google si existe, si no la carta de ejemplo ---- */
@@ -2122,9 +2140,21 @@ const pokeConfig = (function(){
 /* ---- Configurador de Menú Mediodía ---- */
 const mediodiaConfig = (function(){
   const state = { entrante: null, principal: null, bebida: null };
+  /* Hasta que exista mediodiaAvailability() (se define más abajo, tras
+     SCHEDULE) se asume disponible, para no bloquear el primer render;
+     refreshAvailability() corrige esto enseguida, en el mismo arranque
+     de la página. */
+  let availability = { ok: true };
+
+  function bebidaItems(){
+    const excluded = MEDIODIA_EXCLUDED_DRINKS.map(n => n.trim().toLowerCase());
+    return (ALL_DRINKS || [])
+      .filter(d => d.n && !excluded.includes(d.n.trim().toLowerCase()))
+      .map(d => ({ name: d.n, available: true }));
+  }
 
   function itemsOf(g){
-    return { entrante: MEDIODIA.entrantes, principal: MEDIODIA.principales, bebida: MEDIODIA.bebidas }[g];
+    return { entrante: MEDIODIA.entrantes, principal: MEDIODIA.principales, bebida: bebidaItems() }[g];
   }
 
   function fmt(n){ return n.toFixed(2).replace(".",",") + "€"; }
@@ -2146,8 +2176,25 @@ const mediodiaConfig = (function(){
 
   function refresh(){
     document.getElementById("mediodiaTotal").textContent = fmt(MEDIODIA.price);
-    const ok = state.entrante && state.principal && state.bebida;
     const btn = document.getElementById("mediodiaAdd");
+    const note = document.getElementById("mediodiaAvailNote");
+    const selects = document.querySelectorAll("#mediodia-config .mediodia-select");
+
+    if(!availability.ok){
+      selects.forEach(sel => sel.disabled = true);
+      btn.disabled = true;
+      btn.querySelector(".txt").textContent = "No disponible ahora";
+      if(note){
+        note.hidden = false;
+        note.textContent = availability.reason === "dia"
+          ? "⏰ Este menú solo se sirve de lunes a viernes — hoy no está disponible."
+          : "⏰ Este menú solo se puede pedir en horario de mediodía (de lunes a viernes).";
+      }
+      return;
+    }
+    selects.forEach(sel => sel.disabled = false);
+    if(note) note.hidden = true;
+    const ok = state.entrante && state.principal && state.bebida;
     btn.disabled = !ok;
     btn.querySelector(".txt").textContent = ok ? "Añadir menú mediodía" : "Elige entrante, principal y bebida";
   }
@@ -2161,9 +2208,14 @@ const mediodiaConfig = (function(){
     refresh();
   }
 
+  function refreshAvailability(){
+    if(typeof mediodiaAvailability === "function") availability = mediodiaAvailability();
+    refresh();
+  }
+
   document.querySelector("#mediodia-config").addEventListener("change", e => {
     const sel = e.target.closest(".mediodia-select");
-    if(!sel) return;
+    if(!sel || !availability.ok) return;
     const g = sel.dataset.group;
     state[g] = sel.value || null;
     refresh();
@@ -2184,7 +2236,7 @@ const mediodiaConfig = (function(){
   });
 
   reload();
-  return { reload };
+  return { reload, refreshAvailability };
 })();
 
 /* ---- Info de pedido: mínimo, tiempo, zona ---- */
@@ -2256,6 +2308,24 @@ function paintStatus(el, openTxt, closedTxt){
 }
 paintStatus(document.getElementById("statusPill"), "Abierto ahora", "Cerrado ahora");
 paintStatus(document.getElementById("openState"), "● Abierto ahora", "● Cerrado ahora");
+
+/* ---- Menú Mediodía: solo se puede pedir en días hábiles (lunes a
+   viernes) dentro del horario de mediodía REAL del restaurante —
+   nunca en días libres, aunque caigan entre semana. Se apoya en el
+   mismo SCHEDULE de arriba para no desincronizarse si cambia el
+   horario del local: basta con tocar SCHEDULE, esto se ajusta solo. */
+function mediodiaAvailability(){
+  const now = new Date();
+  const day = now.getDay();                      // 0=domingo … 6=sábado
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const isWeekday = day >= 1 && day <= 5;         // lunes a viernes
+  const isOpenDay = SCHEDULE.days.includes(day);  // el local abre ese día
+  const midday = SCHEDULE.ranges[0];              // franja de mediodía real del local
+  if(!isWeekday || !isOpenDay) return { ok: false, reason: "dia" };
+  if(!(mins >= midday[0] && mins < midday[1])) return { ok: false, reason: "hora" };
+  return { ok: true };
+}
+if(typeof mediodiaConfig !== "undefined") mediodiaConfig.refreshAvailability();
 
 /* ---- Barra de categorías: añadir Horario ---- */
 
@@ -3109,6 +3179,40 @@ if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").catch(() => {});
   });
 }
+
+/* ---- Aviso de actualización disponible ----
+   Un cliente puede dejar la pestaña abierta horas (o días, si la
+   "instaló" como app) sin volver a cargarla nunca, y mientras tanto la
+   carta, el Menú Mediodía o los precios pueden cambiar. El navegador no
+   refresca la página solo, así que lo comprobamos nosotros: cada pocos
+   minutos (y en cuanto vuelve a esta pestaña) se vuelve a pedir esta
+   misma página en directo (cache:"no-store", sin pasar por el service
+   worker ni la caché del navegador) y se compara con lo que se cargó la
+   primera vez. Si cambió, se avisa con un toast en vez de recargar solo
+   — así no se corta a nadie a mitad de un pedido; el cliente decide
+   cuándo actualizar. */
+let lastKnownPageSnapshot = null;
+async function checkForPageUpdate(){
+  try{
+    const url = location.pathname + (location.pathname.includes("?") ? "&" : "?") + "_fresh=" + Date.now();
+    const res = await fetch(url, { cache: "no-store" });
+    if(!res.ok) return;
+    const text = await res.text();
+    if(lastKnownPageSnapshot === null){ lastKnownPageSnapshot = text; return; }
+    if(text !== lastKnownPageSnapshot){
+      lastKnownPageSnapshot = text; // evita repetir el aviso cada vez que vuelva a comprobar
+      showToast("🔄 Hay una actualización de la web disponible", "Actualizar", () => location.reload(), 25000);
+    }
+  }catch(e){ /* sin red ahora mismo: se reintenta en el siguiente ciclo, sin avisar de nada */ }
+}
+checkForPageUpdate(); // primera lectura: solo guarda el estado actual, no avisa
+setInterval(checkForPageUpdate, 5 * 60 * 1000); // cada 5 minutos
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible") checkForPageUpdate();
+});
+addEventListener("pageshow", e => {
+  if(e.persisted) checkForPageUpdate(); // vuelve de la caché de navegación (atrás/adelante)
+});
 
 /* ---- Carga: opciones de Poke y variantes de Gyoza (hoja aparte, ver POKE_SHEET_URL) ---- */
 (async function(){
