@@ -335,7 +335,7 @@ h1,h2,h3{font-family:'DM Sans',sans-serif;font-weight:800;letter-spacing:-.01em}
 }
 .catnav-grid a:hover{background:var(--blue-soft)}
 .catnav-grid a.active{background:var(--blue);color:#fff;box-shadow:0 4px 10px rgba(41,50,217,.22)}
-.section-head,#poke-config,#info{scroll-margin-top:64px}
+.section-head,#poke-config,#mediodia-config,#info{scroll-margin-top:64px}
 @media(max-width:480px){.status-pill{font-size:9.5px;padding:7px 9px;gap:4px}}
 
 /* ---------- SECCIONES ---------- */
@@ -472,6 +472,31 @@ section,main,.section-head{position:relative;z-index:2}
 .poke-total span{font-family:'DM Sans',sans-serif;font-weight:800;font-size:22px;margin-left:6px}
 .poke-add{flex:1;min-width:220px;margin-top:0}
 .poke-add:disabled{background:var(--fog,#eef);border-color:var(--line);color:var(--dim);cursor:not-allowed;transform:none}
+
+/* ---------- MENÚ MEDIODÍA ---------- */
+.mediodia-wrap{max-width:760px;margin:0 auto;padding:0 24px;position:relative}
+.mediodia-card{
+  background:#fff;border:2.5px solid var(--blue);border-radius:var(--radius);
+  padding:28px 24px 26px;box-shadow:8px 10px 0 var(--blue-soft);
+}
+.mediodia-media{border-radius:16px;overflow:hidden;border:2px solid var(--blue);margin-bottom:16px}
+.mediodia-media img{width:100%;aspect-ratio:16/8;object-fit:cover}
+.mediodia-sub{font-size:15px;color:var(--dim);font-weight:600;line-height:1.55;margin-bottom:8px}
+.mediodia-step{margin-top:22px}
+.mediodia-step .num{
+  font-family:'DM Sans',sans-serif;font-weight:800;font-size:12px;color:#fff;
+  background:var(--blue);border-radius:8px;padding:3px 8px;margin-right:8px;
+}
+.mediodia-step h3{display:inline;font-size:17px}
+.mediodia-step h3 small{font-size:12px;color:var(--dim);font-family:'DM Sans',sans-serif;font-weight:700}
+.mediodia-foot{
+  margin-top:26px;padding-top:18px;border-top:2px solid var(--line);
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.mediodia-total{font-weight:800;font-size:17px}
+.mediodia-total span{font-family:'DM Sans',sans-serif;font-weight:800;font-size:22px;margin-left:6px}
+.mediodia-add{flex:1;min-width:220px;margin-top:0}
+.mediodia-add:disabled{background:var(--fog,#eef);border-color:var(--line);color:var(--dim);cursor:not-allowed;transform:none}
 
 .drinks-grid{
   max-width:1160px;margin:0 auto;padding:0 24px 10px;
@@ -1075,6 +1100,25 @@ footer{
   </div>
 </noscript>
 
+<!-- ============ MENÚ MEDIODÍA ============ -->
+<section id="mediodia-config">
+  <div class="section-head reveal">
+    <h2>MENÚ MEDIODÍA</h2><span class="jp">昼食</span><span class="rule"></span>
+  </div>
+  <div class="mediodia-wrap reveal">
+    <div class="mediodia-card">
+      <div class="mediodia-media" id="mediodiaMedia"><img src="img/donburi-karaage.jpg" alt="Menú Mediodía YOKAI"></div>
+      <p class="mediodia-sub">Entrante + principal a elegir. Bebida y postre incluidos. Solo en horario de mediodía.</p>
+      <div class="mediodia-step"><span class="num">01</span><h3>Entrante</h3><div class="chips" data-group="entrante" data-type="single"></div></div>
+      <div class="mediodia-step"><span class="num">02</span><h3>Principal</h3><div class="chips" data-group="principal" data-type="single"></div></div>
+      <div class="mediodia-foot">
+        <div class="mediodia-total">Precio <span id="mediodiaTotal">15,90€</span></div>
+        <button class="add-btn mediodia-add" id="mediodiaAdd" disabled><span class="plus">+</span><span class="txt">Elige entrante y principal</span></button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ POKE ============ -->
 <section id="poke-config">
   <div class="section-head reveal">
@@ -1347,6 +1391,15 @@ const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSf8GETYkg-cq
    vacío, se usan los valores de ejemplo de más abajo (DEFAULT_POKE). */
 const POKE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSf8GETYkg-cqI5sIqx6AfRWKqDHFwgrJ9kS1ZwetPFIQX4WssP5hhQjP_spScNMEFL_h8GIqQQ-Oi6/pub?gid=47641986&single=true&output=csv";
 
+/* MEDIODIA_SHEET_URL: enlace CSV de otra pestaña nueva de tu hoja de
+   Google, p.ej. "Menú Mediodía", con columnas Grupo | Nombre | Disponible
+   (Grupo: Entrante / Principal / Precio — en la fila de Precio, Nombre
+   lleva el importe, ej. "15,90"). Desde ahí cambias cada día qué
+   entrantes y principales entran en el menú de mediodía, los marcas
+   como agotados o ajustas el precio, sin tocar el código. Si se deja
+   vacío, se usan los valores de ejemplo de más abajo (DEFAULT_MEDIODIA). */
+const MEDIODIA_SHEET_URL = "";
+
 const MARQUEE_ITEMS = [
   "YOKAI", "良い寿司、良い時間。", "HECHO AL MOMENTO",
   "EL JAPÓN URBANO", "HECHO EN ONDA"
@@ -1507,6 +1560,21 @@ const DEFAULT_GYOZA_VARIANTS = [
   "Langostino frita", "Pollo frita", "Vegetales frita"
 ];
 
+/* ---- Menú Mediodía ----
+   Valores de ejemplo, usados solo si MEDIODIA_SHEET_URL está vacío o
+   falla la carga de esa hoja. */
+const DEFAULT_MEDIODIA = {
+  price: 15.90,
+  entrantes: [
+    "Wakame", "Edamame", "Takoyakis", "Gyozas pollo o vegetales",
+    "Hosomaki salmón, atún, aguacate o pepino"
+  ],
+  principales: [
+    "Donburi chasu don o karaage", "Yakisoba mixto", "Poke yokai o blue dragon",
+    "Alaska roll", "Tuna roll", "California roll"
+  ]
+};
+
 /* Convierte una lista de nombres sueltos (los valores de ejemplo) al
    mismo formato {name, available} que llega de la hoja de Google. */
 function toItems(arr){ return (arr || []).map(v => typeof v === "string" ? { name: v, available: true } : v); }
@@ -1544,6 +1612,26 @@ function applyPokeSheetData(sheet){
   POKE = normalizePokeData(sheet);
   GYOZA_VARIANTS = (sheet && sheet.gyozas && sheet.gyozas.length) ? sheet.gyozas : toItems(DEFAULT_GYOZA_VARIANTS);
   if(typeof pokeConfig !== "undefined") pokeConfig.reload();
+}
+
+/* Combina lo leído de MEDIODIA_SHEET_URL con los valores de ejemplo: si
+   un grupo viene vacío de la hoja (o no hay hoja), se usa el de ejemplo;
+   igual con el precio. */
+function normalizeMediodiaData(sheet){
+  const s = sheet || {};
+  const entrantes = (s.entrantes && s.entrantes.length) ? s.entrantes : toItems(DEFAULT_MEDIODIA.entrantes);
+  const principales = (s.principales && s.principales.length) ? s.principales : toItems(DEFAULT_MEDIODIA.principales);
+  const price = (s.price != null && !isNaN(s.price) && s.price > 0) ? s.price : DEFAULT_MEDIODIA.price;
+  return { price, entrantes, principales };
+}
+
+let MEDIODIA = normalizeMediodiaData(null);
+
+/* Se llama tras leer (o intentar leer) MEDIODIA_SHEET_URL, para aplicar
+   los datos reales al configurador del menú mediodía. */
+function applyMediodiaSheetData(sheet){
+  MEDIODIA = normalizeMediodiaData(sheet);
+  if(typeof mediodiaConfig !== "undefined") mediodiaConfig.reload();
 }
 
 /* ============================================================
@@ -1683,6 +1771,31 @@ function buildPokeFromSheet(rows){
   return out;
 }
 
+/* ---- Lector de la hoja "Menú Mediodía" ----
+   Columnas esperadas: Grupo | Nombre | Disponible
+   - Grupo: Entrante / Principal / Precio
+   - En la fila de Precio, Nombre lleva el importe (ej. "15,90" o "15,90€")
+     y Disponible no se usa.
+   - Disponible: Sí / No — "No" lo marca como agotado (se ve tachado). */
+function buildMediodiaFromSheet(rows){
+  const head = rows[0].map(h => slug(h));
+  const idx = name => head.indexOf(name);
+  const col = (r, name) => { const i = idx(name); return i >= 0 ? (r[i] || "").trim() : ""; };
+  const GROUP_KEY = { "entrante": "entrantes", "principal": "principales" };
+  const out = { entrantes: [], principales: [], price: null };
+  for(const r of rows.slice(1)){
+    const grupo = slug(col(r, "grupo"));
+    const nombre = col(r, "nombre");
+    if(!nombre) continue;
+    if(grupo === "precio"){ out.price = toNum(nombre); continue; }
+    const key = GROUP_KEY[grupo];
+    if(!key) continue;
+    const disp = col(r, "disponible").toLowerCase();
+    out[key].push({ name: nombre, available: !(disp === "no" || disp === "0") });
+  }
+  return out;
+}
+
 /* ---- Render ---- */
 function allergensHTML(list){
   return Object.keys(ALLERGEN_ICONS).map(k => {
@@ -1780,7 +1893,8 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
     ...SECTIONS.map(s => ({ id: s.id, label: s.title })),
     ...(DRINKS.length ? [{ id: "bebidas", label: "Bebidas" }] : [])
   ];
-  tabs.splice(SECTIONS.length, 0, { id: "poke-config", label: "Arma tu Poke" });
+  tabs.splice(SECTIONS.length, 0, { id: "mediodia-config", label: "Menú Mediodía" });
+  tabs.splice(SECTIONS.length + 1, 0, { id: "poke-config", label: "Arma tu Poke" });
   nav.innerHTML = tabs.map(t => `<a href="#${t.id}" data-target="${t.id}">${t.label}</a>`).join("");
 
   /* Botón fijo "Categorías": despliega/cierra el listado, sin gesto de swipe */
@@ -1973,6 +2087,73 @@ const pokeConfig = (function(){
       else cart.push({ key, price: total(), qty: 1, detail });
       renderCart();
       const b = document.getElementById("pokeAdd");
+      b.classList.add("pop"); setTimeout(()=> b.classList.remove("pop"), 300);
+      openCart();
+    }
+  });
+
+  reload();
+  return { reload };
+})();
+
+/* ---- Configurador de Menú Mediodía ---- */
+const mediodiaConfig = (function(){
+  const state = { entrante: null, principal: null };
+
+  function itemsOf(g){
+    return { entrante: MEDIODIA.entrantes, principal: MEDIODIA.principales }[g];
+  }
+
+  function renderChips(){
+    document.querySelectorAll("#mediodia-config .chips").forEach(box => {
+      const g = box.dataset.group;
+      box.innerHTML = itemsOf(g).map(it => {
+        const off = it.available === false;
+        return `<button class="chip${off ? " agotado" : ""}" data-v="${it.name}"${off ? " disabled" : ""}>${it.name}${off ? ' <span class="agotado-tag">Agotado</span>' : ""}</button>`;
+      }).join("");
+    });
+  }
+
+  function fmt(n){ return n.toFixed(2).replace(".",",") + "€"; }
+
+  function refresh(){
+    document.querySelectorAll("#mediodia-config .chips").forEach(box => {
+      const g = box.dataset.group;
+      box.querySelectorAll(".chip").forEach(c => {
+        c.classList.toggle("sel", state[g] === c.dataset.v);
+      });
+    });
+    document.getElementById("mediodiaTotal").textContent = fmt(MEDIODIA.price);
+    const ok = state.entrante && state.principal;
+    const btn = document.getElementById("mediodiaAdd");
+    btn.disabled = !ok;
+    btn.querySelector(".txt").textContent = ok ? "Añadir menú mediodía" : "Elige entrante y principal";
+  }
+
+  function reload(){
+    /* Si la opción elegida ya no existe o quedó agotada, se deja sin elegir. */
+    if(state.entrante && !itemsOf("entrante").some(it => it.name === state.entrante && it.available !== false)) state.entrante = null;
+    if(state.principal && !itemsOf("principal").some(it => it.name === state.principal && it.available !== false)) state.principal = null;
+    renderChips();
+    refresh();
+  }
+
+  document.querySelector("#mediodia-config").addEventListener("click", e => {
+    const c = e.target.closest(".chip");
+    if(c && !c.disabled){
+      const g = c.closest(".chips").dataset.group;
+      const v = c.dataset.v;
+      state[g] = (state[g] === v) ? null : v;
+      refresh();
+    }
+    if(e.target.closest("#mediodiaAdd") && !document.getElementById("mediodiaAdd").disabled){
+      const detail = `Entrante: ${state.entrante} · Principal: ${state.principal}`;
+      const key = "Menú Mediodía";
+      const item = cart.find(i => i.key === key && i.detail === detail);
+      if(item) item.qty++;
+      else cart.push({ key, price: MEDIODIA.price, qty: 1, detail });
+      renderCart();
+      const b = document.getElementById("mediodiaAdd");
       b.classList.add("pop"); setTimeout(()=> b.classList.remove("pop"), 300);
       openCart();
     }
@@ -2916,6 +3097,19 @@ if("serviceWorker" in navigator){
     }catch(err){ console.warn("No se pudo leer la hoja de poke/gyozas, usando valores locales:", err); }
   }
   applyPokeSheetData(sheet);
+})();
+
+/* ---- Carga: opciones del Menú Mediodía (hoja aparte, ver MEDIODIA_SHEET_URL) ---- */
+(async function(){
+  let sheet = null;
+  if(MEDIODIA_SHEET_URL){
+    try{
+      const res = await fetch(MEDIODIA_SHEET_URL + (MEDIODIA_SHEET_URL.includes("?") ? "&" : "?") + "t=" + Date.now());
+      if(!res.ok) throw new Error(res.status);
+      sheet = buildMediodiaFromSheet(parseCSV(await res.text()));
+    }catch(err){ console.warn("No se pudo leer la hoja del menú mediodía, usando valores locales:", err); }
+  }
+  applyMediodiaSheetData(sheet);
 })();
 </script>
 </body>
