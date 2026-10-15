@@ -1056,6 +1056,10 @@ footer{
       <li><strong>Donburi Gyudon</strong> (9,50€) — Bol de arroz cubierto de carne de ternera y cebolla caramelizada, acompañado de huevo y cebollino.</li>
       <li><strong>Donburi Katsu Curry</strong> (10,99€) — Bol de arroz con lomo de cerdo crujiente y nuestra versión de salsa de curry japonés.</li>
     </ul>
+    <h3>RAMEN</h3>
+    <ul>
+      <li><strong>Ramen Tonkotsu</strong> (13,90€) — Caldo tonkotsu de cerdo, cocinado a fuego lento durante 8 horas hasta quedar intenso y cremoso. Con fideos ramen, huevo marinado, narutomaki y cebolleta. Elige tu proteína: chashu de panceta estofada o pollo crujiente al panko.</li>
+    </ul>
     <h3>ROLLS · URAMAKI</h3>
     <ul>
       <li><strong>Alaska</strong> (10 piezas: 8,50€) — Salmón, aguacate y queso crema.</li>
@@ -1470,6 +1474,11 @@ const DEFAULT_SECTIONS = [
       desc:"Bol de arroz con lomo de cerdo crujiente y nuestra versión de salsa de curry japonés.",
       origin:"", prices:[{label:"", value:"10,99€"}], allergens:["gluten","huevo","leche","soja"] }
   ]},
+  { id:"ramen", title:"RAMEN", jp:"ラーメン", dishes:[
+    { name:"Ramen Tonkotsu", jp:"とんこつラーメン", emoji:"🍜", media:"", badge:"Nuevo",
+      desc:"Caldo tonkotsu de cerdo, cocinado a fuego lento durante 8 horas hasta quedar intenso y cremoso. Con fideos ramen, huevo marinado, narutomaki y cebolleta. Elige tu proteína: chashu de panceta estofada o pollo crujiente al panko.",
+      origin:"", prices:[{label:"Chashu · panceta estofada", value:"13,90€"},{label:"Pollo al panko", value:"13,90€"}], allergens:["gluten","soja","huevo","pescado"] }
+  ]},
   { id:"rolls", title:"ROLLS · URAMAKI", jp:"裏巻き", dishes:[
     { name:"Alaska", jp:"アラスカ", emoji:"🍣", media:"img/roll-alaska.jpg", badge:"",
       desc:"Salmón, aguacate y queso crema.",
@@ -1834,6 +1843,31 @@ function buildMediodiaFromSheet(rows){
 }
 
 /* ---- Render ---- */
+/* Cuando un plato tiene varias "prices" con el MISMO importe (p.ej. elegir
+   proteína en el Ramen Tonkotsu: chashu o pollo al panko, ambos a 13,90€),
+   no tiene sentido mostrar dos botones "Añadir" idénticos en precio: se
+   muestra un único botón que, al pulsarlo, abre el modal de marca para
+   que el cliente elija cuál de las opciones quiere antes de añadirla al
+   carrito. Si los importes son distintos (p.ej. "6 uds" / "4 uds" en
+   Langostinos Tempura), se mantiene el comportamiento de siempre: un
+   botón por variante, cada uno con su propio precio visible. */
+function pricesBlockHTML(d){
+  const prices = d.prices || [];
+  const vals = prices.map(p => toNum(p.value));
+  const isChoice = prices.length > 1 && vals.every(v => v === vals[0]);
+  if(isChoice){
+    const value = prices[0].value;
+    const labels = prices.map(p => p.label);
+    return `
+    <div class="price"><div class="lbl">Elige proteína</div><div class="val">${value}</div>
+      <button class="add-btn" data-name="${d.name}" data-price="${value}" data-choice="${labels.join("§")}"><span class="plus">+</span><span class="txt">Añadir</span></button>
+    </div>`;
+  }
+  return prices.map(p => `
+    <div class="price"><div class="lbl">${p.label}</div><div class="val">${p.value}</div>
+      <button class="add-btn" data-name="${d.name}" data-label="${p.label}" data-price="${p.value}"><span class="plus">+</span><span class="txt">Añadir</span></button>
+    </div>`).join("");
+}
 function allergensHTML(list){
   return Object.keys(ALLERGEN_ICONS).map(k => {
     const on = list.includes(k) ? "on" : "";
@@ -1865,11 +1899,7 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
           <h3>${d.name}</h3>
           <p class="desc">${d.desc || ""}</p>
           <div class="origin">${d.origin || ""}</div>
-          <div class="prices">${d.prices.map(p => `
-            <div class="price"><div class="lbl">${p.label}</div><div class="val">${p.value}</div>
-              <button class="add-btn" data-name="${d.name}" data-label="${p.label}" data-price="${p.value}"><span class="plus">+</span><span class="txt">Añadir</span></button>
-            </div>`).join("")}
-          </div>
+          <div class="prices">${pricesBlockHTML(d)}</div>
           <div class="allergens">
             <div class="lbl">Alérgenos</div>
             <div class="allergen-row">${allergensHTML(d.allergens)}</div>
@@ -1901,11 +1931,7 @@ function renderAll(SECTIONS, SAUCES, DRINKS, FAVORITES, POKE_MEDIA){
           <h3>${d.name}</h3>
           <p class="desc">${d.desc || ""}</p>
           <div class="origin">${d.origin || ""}</div>
-          <div class="prices">${d.prices.map(p => `
-            <div class="price"><div class="lbl">${p.label}</div><div class="val">${p.value}</div>
-              <button class="add-btn" data-name="${d.name}" data-label="${p.label}" data-price="${p.value}"><span class="plus">+</span><span class="txt">Añadir</span></button>
-            </div>`).join("")}
-          </div>
+          <div class="prices">${pricesBlockHTML(d)}</div>
           <div class="allergens">
             <div class="lbl">Alérgenos</div>
             <div class="allergen-row">${allergensHTML(d.allergens)}</div>
@@ -2434,12 +2460,28 @@ const toNum = s => parseFloat(s.replace("€","").replace(",",".").trim()) || 0;
 const toEur = n => n.toFixed(2).replace(".",",") + "€";
 const keyOf = (name,label) => name + (label ? " (" + label + ")" : "");
 
-document.addEventListener("click", e => {
+document.addEventListener("click", async e => {
   const b = e.target.closest(".add-btn");
   if(!b || !b.dataset.name) return; // pokeAdd, por ejemplo, comparte estilo pero no es un botón de carta
   if(b.dataset.name === "Mochi"){ openMochiPicker(b.dataset.price); return; }
   if(b.dataset.name === "Gyozas"){ openGyozaPicker(b.dataset.price); return; }
-  const key = keyOf(b.dataset.name, b.dataset.label);
+
+  let label = b.dataset.label;
+  if(b.dataset.choice){
+    /* Plato con varias opciones al mismo precio (p.ej. proteína del Ramen
+       Tonkotsu): primero se le pregunta al cliente cuál quiere, y solo
+       entonces se añade al carrito con esa etiqueta. */
+    const options = b.dataset.choice.split("§");
+    label = await showBrandModal({
+      char: "img/char-chopstick.png",
+      title: b.dataset.name,
+      msg: "¿Qué proteína prefieres?",
+      actions: options.map((opt, i) => ({ label: opt, kind: i === 0 ? "primary" : "ghost", value: opt }))
+    });
+    if(!label) return;
+  }
+
+  const key = keyOf(b.dataset.name, label);
   const item = cart.find(i => i.key === key);
   if(item) item.qty++;
   else cart.push({ key, price: toNum(b.dataset.price), qty: 1 });
@@ -2948,18 +2990,6 @@ document.addEventListener("keydown", e => {
 
 waSend.addEventListener("click", async () => {
   const s = openStatus();
-  if(!s.openNow){
-    const seguir = await showBrandModal({
-      char: "img/char-ramen.png",
-      title: "Ahora mismo estamos cerrados",
-      msg: "Nuestro horario es J-L de 12:00 a 16:00 y de 19:30 a 23:30. ¿Quieres enviar el pedido igualmente para cuando abramos?",
-      actions: [
-        { label: "Enviar igualmente", kind: "primary", value: true },
-        { label: "Esperar", kind: "ghost", value: false }
-      ]
-    });
-    if(!seguir) return;
-  }
   const name = document.getElementById("fName").value.trim();
   const surname = document.getElementById("fSurname").value.trim();
   const phone = document.getElementById("fPhone").value.trim();
@@ -2996,9 +3026,32 @@ waSend.addEventListener("click", async () => {
   /* Los pueblos "pooled" no bloquean aquí: su mínimo se cuenta sumando
      varios pedidos de vecinos, no se puede validar en un pedido suelto. */
 
-  /* Abrimos la pestaña ya, en el mismo gesto de tocar el botón,
-     para que ningún navegador la bloquee mientras esperamos al Club YOKAI. */
+  /* Abrimos la pestaña YA, aquí mismo, antes de cualquier "await" —
+     en iPhone/Safari, si window.open() se llama DESPUÉS de esperar algo
+     (como el aviso de "cerrado" un poco más abajo, o antes el Club YOKAI),
+     Safari ya no lo reconoce como parte del toque del usuario y bloquea
+     la apertura en silencio: esa es la causa más probable de que a veces
+     no redirija a WhatsApp en iPhone. Abriéndola aquí, en el mismo
+     instante del clic, lo único que queda por hacer después es escribirle
+     la URL encima (waWin.location.href), y eso sí funciona en Safari
+     aunque pase tiempo de por medio. */
   const waWin = window.open("", "_blank");
+
+  if(!s.openNow){
+    const seguir = await showBrandModal({
+      char: "img/char-ramen.png",
+      title: "Ahora mismo estamos cerrados",
+      msg: "Nuestro horario es J-L de 12:00 a 16:00 y de 19:30 a 23:30. ¿Quieres enviar el pedido igualmente para cuando abramos?",
+      actions: [
+        { label: "Enviar igualmente", kind: "primary", value: true },
+        { label: "Esperar", kind: "ghost", value: false }
+      ]
+    });
+    if(!seguir){
+      if(waWin && !waWin.closed) waWin.close();
+      return;
+    }
+  }
 
   let rewardLine = "", toastMsg = "✓ Pedido enviado — revisa WhatsApp";
   if(LOYALTY_URL){
