@@ -1184,8 +1184,9 @@ footer{
     <div class="info-card">
       <div class="open-state" id="openState">…</div>
       <h3>Horario</h3>
-      <p><b>De jueves a lunes</b><br>12:00 – 16:00<br>19:30 – 23:30</p>
-      <p class="closed-days">Martes y miércoles cerrado</p>
+      <p id="horarioHoras"><b>De jueves a lunes</b><br>12:00 – 16:00<br>19:30 – 23:30</p>
+      <p class="closed-days" id="horarioCerrados">Martes y miércoles cerrado</p>
+      <p class="closed-days" id="horarioAviso" hidden></p>
     </div>
     <div class="info-card">
       <h3>Dónde estamos</h3>
@@ -1429,6 +1430,51 @@ const POKE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSf8GETY
    no se gestiona aquí: sale sola de la carta de bebidas de la web (ver
    MEDIODIA_EXCLUDED_DRINKS más abajo). */
 const MEDIODIA_SHEET_URL = "";
+
+/* HORARIO_SHEET_URL: enlace CSV de otra pestaña de tu hoja de Google
+   (p.ej. "Horario") para cambiar los días y horas de apertura — o para
+   cerrar/abrir la web manualmente (vacaciones, imprevistos, un evento) —
+   sin tocar el código ni subir nada a GitHub: solo editas la hoja.
+
+   Crea una pestaña nueva en tu misma hoja de Google con estas columnas
+   (primera fila = nombres de columna, exactamente así):
+
+     tipo,dia,abierto,turno1_inicio,turno1_fin,turno2_inicio,turno2_fin,modo_manual,mensaje_manual
+
+   Luego, una fila por cada día de la semana (tipo = "dia"):
+
+     dia,Lunes,si,12:00,16:00,19:30,23:30,,
+     dia,Martes,no,,,,,,
+     dia,Miercoles,no,,,,,,
+     dia,Jueves,si,12:00,16:00,19:30,23:30,,
+     dia,Viernes,si,12:00,16:00,19:30,23:30,,
+     dia,Sabado,si,12:00,16:00,19:30,23:30,,
+     dia,Domingo,si,12:00,16:00,19:30,23:30,,
+
+   - "abierto": si o no — si ese día abrís o no.
+   - turno1_inicio/turno1_fin: el primer turno (horas en formato 24h,
+     HH:MM). Si solo abrís un turno ese día, deja turno2 vacío.
+   - turno2_inicio/turno2_fin: el segundo turno (si lo hay).
+
+   Y UNA fila especial más (tipo = "manual") para forzar manualmente el
+   estado de la web, pase lo que pase con los días/horas de arriba:
+
+     manual,,,,,,,auto,
+
+   - modo_manual: "auto" (usa el horario normal de arriba — esto es lo
+     normal), "cerrado" (la web se muestra SIEMPRE cerrada: para
+     vacaciones o un cierre imprevisto) o "abierto" (SIEMPRE abierta).
+   - mensaje_manual: opcional. Un texto que se le muestra al cliente
+     cuando pones "cerrado" o "abierto" a mano, ej. "Cerrado por
+     vacaciones, volvemos el 3 de noviembre". Déjalo vacío para usar el
+     mensaje de siempre.
+
+   Para activar todo esto: en esa hoja, Archivo → Compartir → Publicar en
+   la web → eliges la pestaña "Horario" → formato CSV → Publicar, y me
+   pasas el enlace para que lo ponga aquí. Mientras este campo esté
+   vacío (como ahora), la web sigue con el horario de siempre
+   (J-L, 12:00-16:00 y 19:30-23:30) sin que cambie nada. */
+const HORARIO_SHEET_URL = "";
 
 const MARQUEE_ITEMS = [
   "YOKAI", "良い寿司、良い時間。", "HECHO AL MOMENTO",
@@ -1746,6 +1792,48 @@ function parsePrices(str){
     if(value && !value.includes("€")) value += "€";
     return { label, value };
   }).filter(p => p.value);
+}
+
+/* ---- Horario configurable a mano (ver HORARIO_SHEET_URL más arriba) ----
+   Convierte las filas de esa hoja en un objeto { modo, mensaje, porDia },
+   donde porDia[0..6] (0=domingo … 6=sábado) es la lista de turnos
+   (en minutos desde medianoche) en que se abre ese día, o [] si cierra.
+   Si la hoja no tiene el formato esperado, devuelve null y se sigue
+   usando el horario por defecto (DEFAULT_HORARIO, más abajo). */
+function parseHorarioSheet(text){
+  const rows = parseCSV(text);
+  if(rows.length < 2) return null;
+  const head = rows[0].map(h => slug(h));
+  const idx = name => head.indexOf(name);
+  const col = (r, name) => { const i = idx(name); return i >= 0 ? (r[i] || "").trim() : ""; };
+  if(idx("tipo") < 0) return null;
+
+  const DIA_NUM = { domingo:0, lunes:1, martes:2, miercoles:3, jueves:4, viernes:5, sabado:6 };
+  const toMin = s => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || "").trim());
+    return m ? (+m[1]) * 60 + (+m[2]) : null;
+  };
+
+  const out = { modo: "auto", mensaje: "", porDia: {} };
+  for(const r of rows.slice(1)){
+    const tipo = col(r, "tipo").toLowerCase();
+    if(tipo === "dia"){
+      const diaNum = DIA_NUM[slug(col(r, "dia"))];
+      if(diaNum === undefined) continue;
+      if(!/^s/i.test(col(r, "abierto"))){ out.porDia[diaNum] = []; continue; }
+      const ranges = [];
+      const a1 = toMin(col(r, "turno1-inicio")), b1 = toMin(col(r, "turno1-fin"));
+      if(a1 !== null && b1 !== null && b1 > a1) ranges.push([a1, b1]);
+      const a2 = toMin(col(r, "turno2-inicio")), b2 = toMin(col(r, "turno2-fin"));
+      if(a2 !== null && b2 !== null && b2 > a2) ranges.push([a2, b2]);
+      out.porDia[diaNum] = ranges;
+    } else if(tipo === "manual"){
+      const modo = col(r, "modo-manual").toLowerCase();
+      if(["auto","cerrado","abierto"].includes(modo)) out.modo = modo;
+      out.mensaje = col(r, "mensaje-manual");
+    }
+  }
+  return Object.keys(out.porDia).length ? out : null;
 }
 
 function buildFromSheet(rows){
@@ -2316,14 +2404,40 @@ const mediodiaConfig = (function(){
   btn.addEventListener("click", check);
 })();
 
-/* ---- Estado abierto/cerrado ---- */
-const SCHEDULE = { days:[4,5,6,0,1], ranges:[[12*60,16*60],[19*60+30,23*60+30]] };
+/* ---- Estado abierto/cerrado ----
+   SCHEDULE empieza con el horario de siempre (igual que antes) y se
+   sustituye por lo que diga HORARIO_SHEET_URL si ese enlace está
+   configurado y la hoja se lee bien (ver loadHorarioSheet más abajo). */
+const DEFAULT_HORARIO = {
+  modo: "auto", mensaje: "",
+  porDia: {
+    4: [[12*60,16*60],[19*60+30,23*60+30]], // jueves
+    5: [[12*60,16*60],[19*60+30,23*60+30]], // viernes
+    6: [[12*60,16*60],[19*60+30,23*60+30]], // sábado
+    0: [[12*60,16*60],[19*60+30,23*60+30]], // domingo
+    1: [[12*60,16*60],[19*60+30,23*60+30]]  // lunes
+  }
+};
+let SCHEDULE = JSON.parse(JSON.stringify(DEFAULT_HORARIO));
+
+const DIAS_NOMBRE = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+function fmtHora(mins){
+  return String(Math.floor(mins/60)).padStart(2,"0") + ":" + String(mins%60).padStart(2,"0");
+}
+function horarioRangesHoy(){
+  const day = new Date().getDay();
+  if(SCHEDULE.modo === "cerrado") return [];
+  if(SCHEDULE.modo === "abierto") return [[0, 24*60]];
+  return SCHEDULE.porDia[day] || [];
+}
 function openStatus(){
-  const now = new Date();
-  const day = now.getDay(), mins = now.getHours()*60 + now.getMinutes();
-  const openToday = SCHEDULE.days.includes(day);
-  const openNow = openToday && SCHEDULE.ranges.some(([a,b]) => mins >= a && mins < b);
-  return { openNow, openToday };
+  if(SCHEDULE.modo === "cerrado") return { openNow:false, openToday:false, manual:true, mensaje:SCHEDULE.mensaje };
+  if(SCHEDULE.modo === "abierto") return { openNow:true, openToday:true, manual:true, mensaje:SCHEDULE.mensaje };
+  const mins = new Date().getHours()*60 + new Date().getMinutes();
+  const ranges = horarioRangesHoy();
+  const openToday = ranges.length > 0;
+  const openNow = ranges.some(([a,b]) => mins >= a && mins < b);
+  return { openNow, openToday, manual:false, mensaje:"" };
 }
 function paintStatus(el, openTxt, closedTxt){
   if(!el) return;
@@ -2331,27 +2445,80 @@ function paintStatus(el, openTxt, closedTxt){
   el.classList.remove("open","closed");
   if(s.openNow){ el.classList.add("open"); if(el.querySelector(".txt")) el.querySelector(".txt").textContent = openTxt; else el.textContent = openTxt; }
   else { el.classList.add("closed"); if(el.querySelector(".txt")) el.querySelector(".txt").textContent = closedTxt; else el.textContent = closedTxt; }
+  el.title = (s.manual && s.mensaje) ? s.mensaje : "";
+}
+/* Texto legible del horario completo, para la tarjeta "Horario" y para
+   el aviso de WhatsApp cuando está cerrado — se recalcula cada vez que
+   cambia SCHEDULE (al cargar la hoja), nunca queda desactualizado. */
+function horarioTexto(){
+  const lines = [];
+  for(let d = 0; d < 7; d++){
+    const ranges = SCHEDULE.porDia[d] || [];
+    if(ranges.length) lines.push(DIAS_NOMBRE[d] + " " + ranges.map(([a,b]) => fmtHora(a)+"-"+fmtHora(b)).join(", "));
+  }
+  return lines.join(" · ") || "consulta horario por WhatsApp";
+}
+function renderHorarioCard(){
+  const elHoras = document.getElementById("horarioHoras");
+  const elCerrados = document.getElementById("horarioCerrados");
+  const elAviso = document.getElementById("horarioAviso");
+  if(!elHoras) return;
+  const abiertos = [];
+  for(let d = 0; d < 7; d++) if((SCHEDULE.porDia[d]||[]).length) abiertos.push(d);
+  elHoras.innerHTML = abiertos.length
+    ? abiertos.map(d => `<b>${DIAS_NOMBRE[d]}</b> ` + SCHEDULE.porDia[d].map(([a,b]) => fmtHora(a)+" – "+fmtHora(b)).join(", ")).join("<br>")
+    : "Consulta nuestro horario por WhatsApp";
+  const cerrados = DIAS_NOMBRE.filter((_, d) => !(SCHEDULE.porDia[d]||[]).length);
+  elCerrados.hidden = cerrados.length === 0;
+  elCerrados.textContent = cerrados.length ? cerrados.join(" y ") + " cerrado" : "";
+  if(elAviso){
+    const hayAviso = SCHEDULE.modo !== "auto" && SCHEDULE.mensaje;
+    elAviso.hidden = !hayAviso;
+    elAviso.textContent = hayAviso ? "⚠️ " + SCHEDULE.mensaje : "";
+  }
 }
 paintStatus(document.getElementById("statusPill"), "Abierto ahora", "Cerrado ahora");
 paintStatus(document.getElementById("openState"), "● Abierto ahora", "● Cerrado ahora");
+renderHorarioCard();
 
 /* ---- Menú Mediodía: solo se puede pedir en días hábiles (lunes a
    viernes) dentro del horario de mediodía REAL del restaurante —
    nunca en días libres, aunque caigan entre semana. Se apoya en el
    mismo SCHEDULE de arriba para no desincronizarse si cambia el
-   horario del local: basta con tocar SCHEDULE, esto se ajusta solo. */
+   horario del local: basta con tocar SCHEDULE (o la hoja de Horario),
+   esto se ajusta solo. Si alguien fuerza "cerrado" a mano, el menú
+   mediodía también se bloquea. */
 function mediodiaAvailability(){
+  if(SCHEDULE.modo === "cerrado") return { ok: false, reason: "dia" };
   const now = new Date();
   const day = now.getDay();                      // 0=domingo … 6=sábado
   const mins = now.getHours() * 60 + now.getMinutes();
   const isWeekday = day >= 1 && day <= 5;         // lunes a viernes
-  const isOpenDay = SCHEDULE.days.includes(day);  // el local abre ese día
-  const midday = SCHEDULE.ranges[0];              // franja de mediodía real del local
-  if(!isWeekday || !isOpenDay) return { ok: false, reason: "dia" };
-  if(!(mins >= midday[0] && mins < midday[1])) return { ok: false, reason: "hora" };
+  const ranges = SCHEDULE.modo === "abierto" ? [[0, 24*60]] : (SCHEDULE.porDia[day] || []);
+  if(!isWeekday || !ranges.length) return { ok: false, reason: "dia" };
+  const midday = ranges[0];                       // primer turno del día = franja de mediodía
+  if(SCHEDULE.modo !== "abierto" && !(mins >= midday[0] && mins < midday[1])) return { ok: false, reason: "hora" };
   return { ok: true };
 }
 if(typeof mediodiaConfig !== "undefined") mediodiaConfig.refreshAvailability();
+
+/* ---- Horario configurable a mano: carga HORARIO_SHEET_URL si está
+   puesto (ver la constante, más arriba) y sustituye SCHEDULE por lo que
+   diga la hoja. Si está vacío, falla, o el formato no es válido, se
+   queda con DEFAULT_HORARIO (el horario de siempre) sin romper nada. */
+async function loadHorarioSheet(){
+  if(!HORARIO_SHEET_URL) return;
+  try{
+    const res = await fetch(HORARIO_SHEET_URL + (HORARIO_SHEET_URL.includes("?") ? "&" : "?") + "t=" + Date.now());
+    const parsed = parseHorarioSheet(await res.text());
+    if(parsed) SCHEDULE = parsed;
+  }catch(e){ /* se queda con el horario por defecto */ }
+  paintStatus(document.getElementById("statusPill"), "Abierto ahora", "Cerrado ahora");
+  paintStatus(document.getElementById("openState"), "● Abierto ahora", "● Cerrado ahora");
+  renderHorarioCard();
+  if(typeof mediodiaConfig !== "undefined") mediodiaConfig.refreshAvailability();
+}
+loadHorarioSheet();
 
 /* ---- Barra de categorías: añadir Horario ---- */
 
@@ -3041,7 +3208,7 @@ waSend.addEventListener("click", async () => {
     const seguir = await showBrandModal({
       char: "img/char-ramen.png",
       title: "Ahora mismo estamos cerrados",
-      msg: "Nuestro horario es J-L de 12:00 a 16:00 y de 19:30 a 23:30. ¿Quieres enviar el pedido igualmente para cuando abramos?",
+      msg: (s.manual && s.mensaje ? s.mensaje + " " : "Nuestro horario: " + horarioTexto() + ". ") + "¿Quieres enviar el pedido igualmente para cuando abramos?",
       actions: [
         { label: "Enviar igualmente", kind: "primary", value: true },
         { label: "Esperar", kind: "ghost", value: false }
