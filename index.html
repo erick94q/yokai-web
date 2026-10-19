@@ -2418,6 +2418,19 @@ const DEFAULT_HORARIO = {
     1: [[12*60,16*60],[19*60+30,23*60+30]]  // lunes
   }
 };
+
+/* Cierres puntuales: un día concreto cerrado como excepción (imprevisto,
+   mantenimiento, lo que sea), SIN tocar el horario semanal normal de
+   arriba — al día siguiente la web vuelve sola al horario de siempre,
+   sin que haya que acordarse de deshacer nada. Añade o quita fechas
+   aquí, en formato "AAAA-MM-DD" (la fecha del calendario, no el día de
+   la semana). */
+const CIERRES_PUNTUALES = ["2026-10-19"]; // lunes 19 oct 2026, a petición del usuario
+
+function fechaHoyISO(){
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
 let SCHEDULE = JSON.parse(JSON.stringify(DEFAULT_HORARIO));
 
 const DIAS_NOMBRE = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
@@ -2428,11 +2441,13 @@ function horarioRangesHoy(){
   const day = new Date().getDay();
   if(SCHEDULE.modo === "cerrado") return [];
   if(SCHEDULE.modo === "abierto") return [[0, 24*60]];
+  if(CIERRES_PUNTUALES.includes(fechaHoyISO())) return [];
   return SCHEDULE.porDia[day] || [];
 }
 function openStatus(){
   if(SCHEDULE.modo === "cerrado") return { openNow:false, openToday:false, manual:true, mensaje:SCHEDULE.mensaje };
   if(SCHEDULE.modo === "abierto") return { openNow:true, openToday:true, manual:true, mensaje:SCHEDULE.mensaje };
+  if(CIERRES_PUNTUALES.includes(fechaHoyISO())) return { openNow:false, openToday:false, manual:true, mensaje:"Hoy cerramos excepcionalmente." };
   const mins = new Date().getHours()*60 + new Date().getMinutes();
   const ranges = horarioRangesHoy();
   const openToday = ranges.length > 0;
@@ -2472,9 +2487,12 @@ function renderHorarioCard(){
   elCerrados.hidden = cerrados.length === 0;
   elCerrados.textContent = cerrados.length ? cerrados.join(" y ") + " cerrado" : "";
   if(elAviso){
-    const hayAviso = SCHEDULE.modo !== "auto" && SCHEDULE.mensaje;
-    elAviso.hidden = !hayAviso;
-    elAviso.textContent = hayAviso ? "⚠️ " + SCHEDULE.mensaje : "";
+    const cierreHoy = SCHEDULE.modo === "auto" && CIERRES_PUNTUALES.includes(fechaHoyISO());
+    const mensaje = (SCHEDULE.modo !== "auto" && SCHEDULE.mensaje) ? SCHEDULE.mensaje
+                   : cierreHoy ? "Hoy cerramos excepcionalmente."
+                   : "";
+    elAviso.hidden = !mensaje;
+    elAviso.textContent = mensaje ? "⚠️ " + mensaje : "";
   }
 }
 paintStatus(document.getElementById("statusPill"), "Abierto ahora", "Cerrado ahora");
@@ -2489,12 +2507,11 @@ renderHorarioCard();
    esto se ajusta solo. Si alguien fuerza "cerrado" a mano, el menú
    mediodía también se bloquea. */
 function mediodiaAvailability(){
-  if(SCHEDULE.modo === "cerrado") return { ok: false, reason: "dia" };
   const now = new Date();
   const day = now.getDay();                      // 0=domingo … 6=sábado
   const mins = now.getHours() * 60 + now.getMinutes();
   const isWeekday = day >= 1 && day <= 5;         // lunes a viernes
-  const ranges = SCHEDULE.modo === "abierto" ? [[0, 24*60]] : (SCHEDULE.porDia[day] || []);
+  const ranges = horarioRangesHoy();
   if(!isWeekday || !ranges.length) return { ok: false, reason: "dia" };
   const midday = ranges[0];                       // primer turno del día = franja de mediodía
   if(SCHEDULE.modo !== "abierto" && !(mins >= midday[0] && mins < midday[1])) return { ok: false, reason: "hora" };
