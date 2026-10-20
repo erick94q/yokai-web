@@ -2427,6 +2427,16 @@ const DEFAULT_HORARIO = {
    la semana). */
 const CIERRES_PUNTUALES = ["2026-10-19"]; // lunes 19 oct 2026, a petición del usuario
 
+/* Aperturas puntuales: abre un día que normalmente estaría cerrado,
+   como excepción (uno o varios días sueltos), SIN tocar el horario
+   semanal normal de arriba — pasada esa fecha, la web vuelve sola a
+   estar cerrada esos días de siempre. Clave = fecha "AAAA-MM-DD",
+   valor = los turnos de ese día (mismo formato que porDia). */
+const APERTURAS_PUNTUALES = {
+  "2026-10-20": [[12*60,16*60],[19*60+30,23*60+30]], // martes 20 oct 2026, a petición del usuario
+  "2026-10-21": [[12*60,16*60],[19*60+30,23*60+30]]  // miércoles 21 oct 2026, a petición del usuario
+};
+
 function fechaHoyISO(){
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
@@ -2441,18 +2451,22 @@ function horarioRangesHoy(){
   const day = new Date().getDay();
   if(SCHEDULE.modo === "cerrado") return [];
   if(SCHEDULE.modo === "abierto") return [[0, 24*60]];
-  if(CIERRES_PUNTUALES.includes(fechaHoyISO())) return [];
+  const hoy = fechaHoyISO();
+  if(APERTURAS_PUNTUALES[hoy]) return APERTURAS_PUNTUALES[hoy];
+  if(CIERRES_PUNTUALES.includes(hoy)) return [];
   return SCHEDULE.porDia[day] || [];
 }
 function openStatus(){
   if(SCHEDULE.modo === "cerrado") return { openNow:false, openToday:false, manual:true, mensaje:SCHEDULE.mensaje };
   if(SCHEDULE.modo === "abierto") return { openNow:true, openToday:true, manual:true, mensaje:SCHEDULE.mensaje };
-  if(CIERRES_PUNTUALES.includes(fechaHoyISO())) return { openNow:false, openToday:false, manual:true, mensaje:"Hoy cerramos excepcionalmente." };
+  const hoy = fechaHoyISO();
+  const aperturaHoy = APERTURAS_PUNTUALES[hoy];
+  if(CIERRES_PUNTUALES.includes(hoy) && !aperturaHoy) return { openNow:false, openToday:false, manual:true, mensaje:"Hoy cerramos excepcionalmente." };
   const mins = new Date().getHours()*60 + new Date().getMinutes();
   const ranges = horarioRangesHoy();
   const openToday = ranges.length > 0;
   const openNow = ranges.some(([a,b]) => mins >= a && mins < b);
-  return { openNow, openToday, manual:false, mensaje:"" };
+  return { openNow, openToday, manual: !!aperturaHoy, mensaje: aperturaHoy ? "Hoy abrimos en horario especial." : "" };
 }
 function paintStatus(el, openTxt, closedTxt){
   if(!el) return;
@@ -2487,8 +2501,11 @@ function renderHorarioCard(){
   elCerrados.hidden = cerrados.length === 0;
   elCerrados.textContent = cerrados.length ? cerrados.join(" y ") + " cerrado" : "";
   if(elAviso){
-    const cierreHoy = SCHEDULE.modo === "auto" && CIERRES_PUNTUALES.includes(fechaHoyISO());
+    const hoy = fechaHoyISO();
+    const aperturaHoy = SCHEDULE.modo === "auto" && APERTURAS_PUNTUALES[hoy];
+    const cierreHoy = SCHEDULE.modo === "auto" && !aperturaHoy && CIERRES_PUNTUALES.includes(hoy);
     const mensaje = (SCHEDULE.modo !== "auto" && SCHEDULE.mensaje) ? SCHEDULE.mensaje
+                   : aperturaHoy ? "Hoy abrimos en horario especial."
                    : cierreHoy ? "Hoy cerramos excepcionalmente."
                    : "";
     elAviso.hidden = !mensaje;
